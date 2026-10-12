@@ -41,6 +41,7 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/BionicSessionPlan.java \
             app/src/main/java/dev/velowin/app/engine/GameRuntimeChoice.java \
             app/src/main/java/dev/velowin/app/engine/PrefixLinkPolicy.java \
+            app/src/main/java/dev/velowin/app/engine/PrefixArchivePath.java \
             app/src/main/java/dev/velowin/app/engine/GameSessionConfig.java \
             app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
             tests/ReleasePolicyTest.java \
@@ -56,6 +57,7 @@ jobs:
             tests/BionicSessionPlanTest.java \
             tests/GameRuntimeChoiceTest.java \
             tests/PrefixLinkPolicyTest.java \
+            tests/PrefixArchivePathTest.java \
             tests/GameSessionConfigTest.java \
             tests/BionicReleasePolicyTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
@@ -71,6 +73,7 @@ jobs:
           java -ea -cp /tmp/velowin-tests BionicSessionPlanTest
           java -ea -cp /tmp/velowin-tests GameRuntimeChoiceTest
           java -ea -cp /tmp/velowin-tests PrefixLinkPolicyTest
+          java -ea -cp /tmp/velowin-tests PrefixArchivePathTest
           java -ea -cp /tmp/velowin-tests GameSessionConfigTest
           java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
       - name: Static Android source contracts
