@@ -47,6 +47,9 @@ jobs:
       - name: Analyze real Bionic wine ELF interpreter
         run: |
           tar -xOf /tmp/bionic.tar bin/wine > /tmp/bionic-wine
+          tar -tvf /tmp/bionic.tar | grep -E 'bin/wine( |$| ->|64)' | head -30 || true
+          tar -xOf /tmp/bionic.tar bin/wine64 > /tmp/bionic-wine64 || true
+          file /tmp/bionic-wine64
           file /tmp/bionic-wine
           readelf -h /tmp/bionic-wine | sed -n '1,24p'
           readelf -l /tmp/bionic-wine | grep -E 'INTERP|Requesting' || true
