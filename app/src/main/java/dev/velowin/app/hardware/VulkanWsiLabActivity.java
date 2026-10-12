@@ -13,8 +13,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * JNI WSI preflight: VkSurfaceKHR and GPU presentation capabilities on a real
- * Android Surface. Does not display any Vulkan swapchain frames or Wine windows.
+ * JNI WSI preflight: VkSurfaceKHR, VkDevice and a real VkSwapchainKHR created
+ * and destroyed on Android Surface; no frame presentation or Wine windows.
  */
 public final class VulkanWsiLabActivity extends Activity implements SurfaceHolder.Callback {
     private static final boolean LOADED;
@@ -53,8 +53,8 @@ public final class VulkanWsiLabActivity extends Activity implements SurfaceHolde
         view.getHolder().addCallback(this);
         root.addView(view,new LinearLayout.LayoutParams(-1,0,1));
         TextView caveat=new TextView(this);
-        caveat.setText("Este laboratório verifica apresentação da GPU numa Surface "
-            +"Android real. Ainda NÃO renderiza Vulkan, não executa Wine e "
+        caveat.setText("Este laboratório cria e destrói uma swapchain Vulkan numa Surface "
+            +"Android real. Ainda NÃO apresenta quadros, não executa Wine e "
             +"não demonstra DXVK/VKD3D nem FPS de jogos.");
         caveat.setTextSize(12);
         caveat.setTextColor(0xff98a6b9);
