@@ -4,6 +4,8 @@
 
 ## VeloWin 0.4.0-dev — Bionic, prefixos independentes e perfis completos
 
+**Verificação real do WCP:** o GitHub Actions confirmou o pacote de referência GameNative contendo `.wine/drive_c`, `system.reg` e unidades Wine. O instalador preserva C: e omite o link Z: que apontaria para a raiz do Android. Mais detalhes em [Prefixos e perfis](docs/PROFILES_AND_PREFIXES.md).
+
 ### Novidades concretas da 0.4
 
 - **Prefixos por jogo**: novo instalador Android para `prefixPack.txz` dos WCP Wine Bionic já preparados, com staging isolado por UUID, TAR/XZ streaming, proteção de links e verificação de `system.reg` e `drive_c`. Essa preparação **não executa wineboot** e não demonstra compatibilidade Windows.
