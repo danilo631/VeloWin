@@ -28,6 +28,7 @@ import dev.velowin.app.runtime.BionicArchiveStore;
 import dev.velowin.app.runtime.BionicWineInstaller;
 import dev.velowin.app.hardware.NativeCapabilities;
 import dev.velowin.app.hardware.InputAudioLabActivity;
+import dev.velowin.app.hardware.GpuSurfaceLabActivity;
 import dev.velowin.app.engine.BionicWorkspace;
 import dev.velowin.app.engine.RuntimeStrategy;
 import dev.velowin.app.engine.Box64Smoke;
@@ -1068,6 +1069,7 @@ public final class MainActivity extends Activity {
             + "bibliotecas do sistema. A disponibilidade real de Vulkan precisa "
             + "ser testada com um motor carregado.", 13, MUTED, false, 0);
         action(note, "Testar áudio, toque e controle", () -> startActivity(new Intent(this, InputAudioLabActivity.class)), true);
+        action(note, "Testar Surface OpenGL e FPS", () -> startActivity(new Intent(this, GpuSurfaceLabActivity.class)), false);
         action(note, "Testar Box64 Bionic (experimental)", this::testBox64, false);
         action(note, "Compartilhar diagnóstico do dispositivo", this::shareDiagnostics, false);
     }

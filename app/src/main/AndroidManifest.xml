@@ -14,6 +14,8 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/VeloWinTheme"
         android:supportsRtl="true">
+        <activity android:name=".hardware.GpuSurfaceLabActivity"
+            android:exported="false" android:screenOrientation="unspecified"/>
         <activity android:name=".hardware.InputAudioLabActivity"
             android:exported="false" android:screenOrientation="unspecified"/>
         <activity
