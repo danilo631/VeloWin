@@ -35,7 +35,7 @@ A descompactação é **uma instalação de arquivos Wine**, não a instalação
 - Verificação SHA-256 comparada ao texto do **mesmo release** oferece integridade, não assinatura criptográfica independente do mantenedor.
 - Scripts e bibliotecas incluídos no Wine não são executados nem analisados integralmente; componentes só deverão ser iniciados num runtime e isolamento testados.
 - A extração não verifica ABI de cada biblioteca da distribuição. Valida apenas o bin/wine principal.
-- Se o Android interromper abruptamente o processo, pode restar uma pasta `.staging-*` na pasta interna; esta não é reconhecida como versão instalada. Uma futura ferramenta de limpeza recuperará esse espaço.
+- Se o Android interromper abruptamente o processo, pode restar uma pasta `.staging-*` na pasta interna; ela não é reconhecida como versão instalada. O botão **Limpar preparações interrompidas** remove apenas essas pastas, sem apagar versões concluídas.
 - A disponibilidade de symlinks, sistema de arquivos e armazenamento deve ser confirmada em dispositivos reais.
 
 ## Testes
