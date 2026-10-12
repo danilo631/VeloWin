@@ -500,6 +500,24 @@ public final class MainActivity extends Activity {
         action(bionic, "Limpar extrações Bionic interrompidas", this::cleanBionic, false);
         action(bionic, "Preparar workspace Android", this::prepareWorkspace, false);
         add(bionic, BionicWorkspace.status(this), 12, MUTED, false, 2);
+        ArrayList<BionicRelease> cached=BionicArchiveStore.saved(this);
+        if(!cached.isEmpty()){
+            LinearLayout packages=card();
+            add(packages,"Pacotes Bionic no dispositivo",16,WHITE,true,7);
+            for(BionicRelease entry:cached){
+                boolean ready=BionicWineInstaller.installed(this,entry);
+                add(packages,entry.toString(),13,WHITE,true,3);
+                add(packages,ready?"Filesystem Wine Bionic extraído — motor ainda não ativo"
+                    :"Arquivo WCP baixado; aguardando extração",
+                    12,MUTED,false,2);
+                action(packages,ready?"Gerenciar Wine Bionic":"Preparar Wine Bionic",
+                    ()->confirmBionicDownload(entry),false);
+                if(!ready)
+                    action(packages,"Excluir arquivo WCP",
+                        ()->deleteBionicArchive(entry),false);
+            }
+        }
+
         LinearLayout intro = card();
         add(intro, "Wine Linux / glibc", 17, WHITE, true, 7);
         add(intro, "Catálogo: Kron4ek/Wine-Builds. Builds Linux x86_64 WoW64 "
@@ -628,6 +646,19 @@ public final class MainActivity extends Activity {
                 });
             }
         });
+    }
+
+    private void deleteBionicArchive(BionicRelease entry) {
+        if(busy){message("Operação em andamento","Conclua a operação atual.");return;}
+        new AlertDialog.Builder(this).setTitle("Excluir arquivo Bionic?")
+            .setMessage("Exclui o download WCP, mas não afeta outros jogos.")
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton("Excluir",(d,w)->{
+                try{
+                    BionicArchiveStore.remove(this,entry);
+                    draw();
+                }catch(Exception error){message("Falha",errorText(error));}
+            }).show();
     }
 
     private void prepareWorkspace() {
