@@ -134,7 +134,7 @@ public final class WinePrefixManager {
                         throw new IOException("Preparação cancelada.");
                     if(++count>MAX_ENTRIES || !tar.canReadEntryData(member))
                         throw new IOException("Template excede limite de entradas.");
-                    String name=ArchiveSafety.member(member.getName());
+                    String name=PrefixArchivePath.member(member.getName());
                     if(name==null)throw new IOException("Caminho inválido no template Wine.");
                     if(name.isEmpty() && member.isDirectory())continue;
                     if(name.isEmpty() || !seen.add(name) ||
