@@ -1,0 +1,53 @@
+name: Verify Bionic Proton WCP Layout
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feature/bionic-engine-probes-v03']
+    paths: ['.github/workflows/bionic-wcp-inspect.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install read-only archive tooling
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zstd xz-utils file
+      - name: Download pinned genuine GameNative Bionic asset
+        run: |
+          curl --fail --location --retry 3 --connect-timeout 20 -o /tmp/bionic.wcp \
+            https://github.com/GameNative/proton-wine/releases/download/proton-11.0-2-20261010/proton-11.0-2-x86_64.wcp
+          printf '%s  %s\n' 056170e0bea7aead870f3e93036a6282921bad64e5e1206f1371d1d5840b46c7 /tmp/bionic.wcp | sha256sum -c -
+          file /tmp/bionic.wcp
+          xxd -l 12 /tmp/bionic.wcp
+      - name: Inspect WCP compression and archive paths WITHOUT execution
+        run: |
+          set -euo pipefail
+          FILE=/tmp/bionic.wcp
+          MAGIC="$(od -An -tx1 -N4 "$FILE" | tr -d ' \n')"
+          echo "MAGIC=$MAGIC" | tee /tmp/velowin-wcp-layout.txt
+          if [ "$MAGIC" = '28b52ffd' ]; then
+            zstd -dc "$FILE" > /tmp/bionic.tar
+          elif [ "$MAGIC" = 'fd377a58' ]; then
+            xz -dc "$FILE" > /tmp/bionic.tar
+          else
+            echo "Unknown WCP compression" >&2
+            exit 1
+          fi
+          tar -tf /tmp/bionic.tar > /tmp/bionic.paths.txt
+          sed -n '1,45p' /tmp/bionic.paths.txt | tee -a /tmp/velowin-wcp-layout.txt
+          grep -Eq '(^|/)profile.json$' /tmp/bionic.paths.txt
+          (tar -xOf /tmp/bionic.tar profile.json || tar -xOf /tmp/bionic.tar ./profile.json) \
+            | head -c 6000 | tee /tmp/bionic-profile.json
+          grep -Eq '"type"\s*:' /tmp/bionic-profile.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bionic-wcp-layout-inspection
+          path: |
+            /tmp/velowin-wcp-layout.txt
+            /tmp/bionic-profile.json
+          retention-days: 7
