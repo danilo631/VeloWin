@@ -3,7 +3,7 @@ name: Experimental Box64 Bionic Integration
 on:
   workflow_dispatch:
   push:
-    branches: ['feature/bionic-engine-probes-v03']
+    branches: [main, 'feature/engine-launcher-and-ux-v035']
     paths:
       - '.github/workflows/box64-bionic.yml'
       - 'app/src/main/java/dev/velowin/app/engine/**'
