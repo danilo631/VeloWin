@@ -478,9 +478,10 @@ public final class MainActivity extends Activity {
 
         LinearLayout availability = card();
         add(availability, "Motor de execução", 16, WHITE, true, 6);
-        add(availability, "Não instalado. O download Wine é validado e armazenado, "
-            + "mas a execução exige um motor nativo testado (Box64/FEX + rootfs + "
-            + "Vulkan + Wine).", 12, MUTED, false, 0);
+        add(availability, "Preparação Wine disponível: após baixar, você pode extrair "
+            + "o pacote em uma pasta isolada, com SHA-256 e verificação de ELF. "
+            + "Isso não inclui Box64/FEX, rootfs, DXVK ou execução de jogos.",
+            12, MUTED, false, 0);
 
         LinearLayout downloaded = card();
         add(downloaded, "Pacotes verificados", 16, WHITE, true, 8);
@@ -500,9 +501,15 @@ public final class MainActivity extends Activity {
             for (RuntimeStore.Installed entry : entries) {
                 add(downloaded, entry.tag + "  ·  " + entry.bytes / 1048576 + " MB",
                     13, WHITE, true, 4);
-                add(downloaded, "Arquivo verificado; ainda não integrado a um motor.",
+                boolean prepared = WinePackageInstaller.installed(this, entry);
+                add(downloaded, prepared ? "Arquivos Wine preparados · motor não disponível"
+                    : "Download SHA-256 verificado · ainda não preparado",
                     11, MUTED, false, 1);
-                action(downloaded, "Remover pacote", () -> removeRuntime(entry), false);
+                if (!prepared)
+                    action(downloaded, "Preparar arquivos Wine", () -> prepareWine(entry), true);
+                else
+                    action(downloaded, "Remover preparação", () -> removeWinePreparation(entry), false);
+                action(downloaded, "Remover download", () -> removeRuntime(entry), false);
             }
         }
     }
@@ -543,9 +550,9 @@ public final class MainActivity extends Activity {
     private void confirmDownload(ReleaseEntry entry) {
         new AlertDialog.Builder(this).setTitle(entry.toString())
             .setMessage("Origem: GitHub / Kron4ek\nSHA-256: " + entry.sha256
-                + "\n\nEste é um download de Wine Linux/glibc, não um motor Windows "
-                + "completo. O VeloWin armazenará o arquivo verificado, sem "
-                + "executá-lo ou extraí-lo nesta versão.")
+                + "\n\nO pacote será baixado com verificação SHA-256. Depois você "
+                + "poderá preparar os arquivos Wine isoladamente, sem executá-los. "
+                + "Jogos exigem um motor ARM64 adicional, ainda não incluído.")
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Baixar", (d, w) -> downloadRuntime(entry)).show();
     }
@@ -574,8 +581,8 @@ public final class MainActivity extends Activity {
                     if (!isDestroyed() && !isFinishing()) {
                         draw();
                         message("Download verificado", "SHA-256 confirmado. "
-                            + "O arquivo está disponível em Runtimes; o motor nativo "
-                            + "ainda precisa ser integrado.");
+                            + "Toque em Preparar arquivos Wine para extrair com segurança. "
+                            + "O motor de execução nativo continua em desenvolvimento.");
                     }
                 });
             }
@@ -588,6 +595,74 @@ public final class MainActivity extends Activity {
                 });
             }
         });
+    }
+
+    private void prepareWine(RuntimeStore.Installed entry) {
+        if (busy) { message("Operação em andamento", "Conclua a operação atual."); return; }
+        if (runtimes.isDamaged()) {
+            message("Registro inválido", "Runtimes precisam de recuperação antes de instalar.");
+            return;
+        }
+        busy = true;
+        cancelling.set(false);
+        ProgressDialog dialog = new ProgressDialog(this);
+        dialog.setTitle("Preparando Wine " + entry.tag);
+        dialog.setMessage("Validando checksum e descompactando sem executar binários…");
+        dialog.setIndeterminate(true);
+        dialog.setCancelable(false);
+        dialog.setButton(ProgressDialog.BUTTON_NEGATIVE, "Cancelar",
+            (d, which) -> cancelling.set(true));
+        dialog.show();
+
+        worker.execute(() -> {
+            try {
+                WinePackageInstaller.install(getApplicationContext(), entry, cancelling,
+                    count -> runOnUiThread(() -> {
+                        if (!isDestroyed() && !isFinishing())
+                            dialog.setMessage("Verificando e extraindo… " + count + " entradas");
+                    }));
+                runOnUiThread(() -> {
+                    busy = false;
+                    dialog.dismiss();
+                    if (isDestroyed() || isFinishing()) return;
+                    draw();
+                    message("Arquivos Wine preparados",
+                        "A instalação isolada foi concluída e o executável ELF validado. "
+                            + "A execução ainda requer o motor Box64/FEX, rootfs e Vulkan.");
+                });
+            }
+            catch (Exception error) {
+                runOnUiThread(() -> {
+                    busy = false;
+                    dialog.dismiss();
+                    if (!isDestroyed() && !isFinishing())
+                        message("Falha ao preparar Wine", errorText(error));
+                });
+            }
+        });
+    }
+
+    private void removeWinePreparation(RuntimeStore.Installed entry) {
+        if (busy) { message("Operação em andamento", "Conclua a operação atual."); return; }
+        new AlertDialog.Builder(this).setTitle("Remover arquivos Wine preparados?")
+            .setMessage("O arquivo original baixado será preservado. "
+                + "Nenhum jogo na biblioteca será apagado.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Remover", (d, w) -> {
+                busy = true;
+                worker.execute(() -> {
+                    Exception failure = null;
+                    try { WinePackageInstaller.uninstall(getApplicationContext(), entry); }
+                    catch (Exception e) { failure = e; }
+                    final Exception error = failure;
+                    runOnUiThread(() -> {
+                        busy = false;
+                        if (isFinishing() || isDestroyed()) return;
+                        draw();
+                        if (error != null) message("Falha ao remover", errorText(error));
+                    });
+                });
+            }).show();
     }
 
     private void removeRuntime(RuntimeStore.Installed info) {
