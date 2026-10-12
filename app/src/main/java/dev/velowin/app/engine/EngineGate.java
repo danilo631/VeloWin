@@ -3,20 +3,30 @@ package dev.velowin.app.engine;
 import android.content.Context;
 import dev.velowin.app.library.Game;
 import dev.velowin.app.runtime.RuntimeStore;
+import dev.velowin.app.runtime.WinePackageInstaller;
 
 /**
- * Feature gate for the future native game engine. Never execute arbitrary Wine
- * binaries in the Android process or report a successful launch without an engine.
+ * Fail-closed execution gate. No x86 translator/rootfs/graphics backend is bundled
+ * in VeloWin 0.2, so a filesystem prepared from Wine is NOT a runnable engine.
  */
 public final class EngineGate {
     private EngineGate() {}
 
     public static String reason(Context context, Game game) {
-        if (game == null) return "Nenhum jogo selecionado.";
-        // Only a verified native engine with ABI/rootfs/Vulkan preflights will lift this gate.
-        return "Motor Windows ainda não integrado. O VeloWin 0.1 organiza jogos "
-            + "e gerencia downloads verificados, mas precisa de Wine, tradutor x86 "
-            + "(Box64 ou FEX), rootfs e integração gráfica para executar jogos.";
+        if (game == null) return "Adicione um jogo para configurar os componentes.";
+        int prepared = 0;
+        try {
+            for (RuntimeStore.Installed wine : new RuntimeStore(context).all()) {
+                if (WinePackageInstaller.installed(context, wine)) prepared++;
+            }
+        }
+        catch (RuntimeException ignored) {}
+        String status = prepared == 0
+            ? "Nenhum Wine preparado. Abra Runtimes para baixar e preparar uma versão."
+            : prepared + " pacote(s) Wine preparados, mas ainda sem motor ARM64.";
+        return status + "\n\nFalta integrar e validar o tradutor x86 (Box64/FEX), "
+            + "rootfs Linux/glibc, Wineprefix, display/input/áudio e Vulkan/DXVK. "
+            + "O VeloWin impede iniciar binários Windows sem esses módulos.";
     }
 
     public static boolean isReady(Context context) {
