@@ -1,30 +1,28 @@
-# VeloWin roadmap
+# VeloWin — evolução do motor
 
-## 0.1.0 — Fundação própria
-- [x] Repositório independente / aplicação `dev.velowin.app`
-- [x] Interface escura minimalista e navegação
-- [x] Biblioteca de jogos Windows via Android SAF
-- [x] Perfis locais de tradutor e driver por jogo
-- [x] Relatório GPU/GLES/Vulkan
-- [x] Wine/Proton Linux WoW64: catálogo GitHub, download verificado, registro e remoção
-- [x] Testes de política/estruturas e pipeline de build
-- [ ] Testar APK em hardware Android real
+## v0.1 — aplicação Android independente
+- [x] Pacote dev.velowin.app, código próprio, biblioteca SAF e perfis
+- [x] GPU/OpenGL/Vulkan Android e downloads Wine verificados
+- [x] Compilação Android CI
 
-## 0.2.0 — Runtime adapter
-- [ ] ABI documentada para motor Box64/glibc e outro Bionic/FEX quando apropriado
-- [ ] Pacotes versionados e manifestos com assinatura confiável
-- [ ] Extrator seguro de rootfs/Wine com proteção contra symlink e traversal
-- [ ] Teste automático do binário e dependências antes de instalar
-- [ ] Logs estruturados de criação de prefixo Wine, rollback e cancelamento
+## v0.2 — preparação real do filesystem Wine
+- [x] Instalar Wine TAR/XZ com SHA-256, limites de tamanho, links relativos e diretório de staging
+- [x] Detectar ELF principal e impedir instalação Bionic no pipeline glibc
+- [x] Detectar formato PE de um jogo, filtrar favoritos, personalizar títulos e notas
+- [x] Persistência robusta com escrita atômica, substituição reversível e confirmação de download
+- [x] Diagnóstico RAM/bateria/térmico, exportar relatório, novo APK no CI
+- [ ] Executar testes end-to-end de extração em Android físico e arquivar resultados Mali/Adreno
 
-## 0.3.0 — Execução
-- [ ] Ponte nativa Android Vulkan/driver System
-- [ ] Implementar execução de Wine através de Box64/FEX sob runtime compatível
-- [ ] DXVK/VKD3D-Proton configurados por jogo e capability probe
-- [ ] Entrada de teclado/toque/controle, áudio, display e gestão de processos
+## v0.3 — motor nativo real (independente de Winlator)
+- [ ] Escolher e empacotar rootfs com ABI declarada, versão fixa e manifesto assinado
+- [ ] Compilar Box64 para AArch64 / integrar tradutor com verificações de DLL/ELF e ambiente
+- [ ] Verificar dependências glibc e preparar prefixo Wine de modo reprodutível
+- [ ] Implementar serviço de execução isolado, logs, encerramento e tratamento de falhas
+- [ ] Interface gráfica Windows: X server/display Android, toque/controle, áudio
+- [ ] Vulkan nativo + DXVK opcional e VKD3D-Proton quando extensões permitirem
+- [ ] Testar executável Windows simples, depois games de referência Mali e Adreno
 
-## 1.0 — Estabilidade e distribuição
-- [ ] Testes de jogos reais em dispositivos Mali/Adreno
-- [ ] Limites térmicos e previsibilidade de frame pacing
-- [ ] Exportar/importar contêiner com backup
-- [ ] APK release assinado, atualizações verificadas e publicação de licenças
+## v1.0 — distribuição
+- [ ] Backups/migração de biblioteca e prefixos; atualizações assinadas
+- [ ] Estabilidade térmica e melhorias de frame pacing medidas
+- [ ] APK de release com assinatura e matrizes de suporte

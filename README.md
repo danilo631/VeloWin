@@ -1,36 +1,44 @@
 # VeloWin
 
-**VeloWin** é um novo aplicativo Android independente, com código e identidade próprios, para organizar jogos Windows e preparar componentes de compatibilidade de forma segura. Este repositório não é um fork de Winlator nem inclui seus submódulos ou assets.
+**VeloWin** é um novo aplicativo Android independente para organizar jogos Windows, investigar compatibilidade e preparar componentes Wine de forma verificável. Não depende de código, APK, submódulo ou assets do Winlator.
 
-## Estado atual — 0.1.0 (foundation)
+## VeloWin 0.2.0 — nova fase
 
-- Aplicativo Android próprio em **Java 17**, com interface escura minimalista, navegação Biblioteca / Runtimes / Sistema / Sobre.
-- Biblioteca local de instaladores e jogos Windows via seletor SAF, sem permissão de armazenamento global.
-- Perfis por jogo, persistência atômica e diagnóstico de GPU/OpenGL/Vulkan e ABI Android.
-- Busca de builds Wine/Proton **Linux amd64 WoW64** via releases do GitHub, com checksum SHA-256, limites e verificação de origem.
-- Arquivos baixados ficam em armazenamento privado do aplicativo; não são executados ou extraídos automaticamente.
-- CI para testes de políticas e compilação Android debug.
+A interface oferece:
+- **Biblioteca**: importar executáveis Windows pelo seletor do Android, verificar o cabeçalho PE x86/x64, pesquisar, marcar favoritos, renomear, registrar anotações e configurar GPU/tradutor/Wine por jogo.
+- **Wine e Proton**: buscar releases de [Kron4ek/Wine-Builds](https://github.com/Kron4ek/Wine-Builds/releases), baixar apenas arquivos Linux x86_64 WoW64 com nome/URL/tamanho/SHA-256 validados, e **preparar o filesystem Wine** a partir de TAR/XZ com extração isolada, proteção contra path traversal e links externos, limites de extração e instalação atômica.
+- **Sistema**: consultar GPU/OpenGL ES, a versão Vulkan anunciada pelo Android, RAM, espaço livre, bateria e estado térmico; compartilhar um relatório sem root/ADB.
+- **Persistência robusta**: biblioteca em JSON com `AtomicFile` e atualizações por cópia, downloads substituídos com rollback, armazenamento privado e limpeza dos arquivos temporários.
+- **GitHub Actions**: testes Java/Python e APK debug Android.
 
-**Ainda não executa jogos Windows:** o motor nativo (Wine/Box64/FEX, rootfs, DXVK/VKD3D e integração gráfica) é um módulo independente a construir e testar. A interface mostra este estado explicitamente. Baixar um Wine não instala um motor completo.
+### Instalação do APK
 
-## Arquitetura
+Abra [GitHub Actions → VeloWin Android](https://github.com/danilo631/VeloWin/actions/workflows/android.yml), selecione a execução da `main` e, após os jobs aprovados, baixe **Artifacts → velowin-v02-debug**. Extraia o ZIP e instale o APK. A assinatura debug pode diferir de futuras versões de produção.
 
-`dev.velowin.app` / `app/src/main/java/dev/velowin/app` contém módulos próprios: `library`, `runtime`, `hardware`, `engine` e `ui`. O aplicativo parte das APIs oficiais do Android; a interface e as regras de segurança são originais.
+### Utilizar Wine
 
-Consulte [Arquitetura](docs/ARCHITECTURE.md), [Bases e licenças](docs/UPSTREAM.md) e [Roadmap](docs/ROADMAP.md).
+1. Abra **Runtimes → Buscar versões no GitHub**, escolha um Proton Wine Linux WoW64 com hash.
+2. Toque **Baixar**. A validação SHA-256 protege contra arquivos truncados ou alterados em relação à descrição publicada do release.
+3. Quando aparecer no inventário, toque **Preparar arquivos Wine**. A pasta temporária recebe o conteúdo TAR/XZ, o instalador valida a estrutura e `bin/wine` ELF x86_64; só depois move a pasta para a instalação final.
+4. O botão **Remover preparação** apaga apenas os arquivos extraídos. O botão **Remover download** apaga o arquivo comprimido depois de remover a preparação.
+5. Na biblioteca, selecione o pacote Wine preparado para um jogo. A configuração é salva, mas ainda não inicia o jogo.
+
+**Limite importante:** preparar Wine **não instala um motor Windows funcional**. VeloWin ainda não integra o tradutor Box64/FEX, rootfs Linux/glibc, Wineprefix, janelas, áudio/entrada, DXVK/VKD3D e Vulkan de execução. O botão jogar continuará mostrando o diagnóstico, não abrindo executáveis. O APK pode compilar e mesmo assim falhar na extração de algum TAR que use entradas não suportadas. É necessário testar em Android real.
+
+## Bases avaliadas
+
+[Box64](https://github.com/ptitSeb/box64) • [FEX](https://github.com/FEX-Emu/FEX) • [Wine](https://gitlab.winehq.org/wine/wine) • [DXVK](https://github.com/doitsujin/dxvk) • [VKD3D-Proton](https://github.com/HansKristian-Work/vkd3d-proton) • [Kron4ek/Wine-Builds](https://github.com/Kron4ek/Wine-Builds). Esses projetos ainda **não são motores integrados** no APK v0.2. O parser Java Commons Compress e XZ estão declarados no Gradle.
+
+Veja [Arquitetura](docs/ARCHITECTURE.md), [Auditoria de bases](docs/UPSTREAM.md), [Plano de execução](docs/ROADMAP.md) e [Instalador Wine](docs/WINE_INSTALLER.md).
 
 ## Compilar
 
-JDK 17, Android SDK 35, Android Gradle Plugin 8.9.2 e Gradle 8.11.1.
+JDK 17, Android SDK 35, Gradle 8.11.1, Android Gradle Plugin 8.9.2.
 
 ```bash
+git clone https://github.com/danilo631/VeloWin.git
+cd VeloWin
 gradle :app:assembleDebug
 ```
 
-Também é possível executar **Actions → VeloWin Android → Run workflow** para compilar no GitHub. O APK debug aparece em **Artifacts → velowin-debug** após o job passar.
-
-**Nota:** a assinatura debug não é uma assinatura release distribuível. A compatibilidade dos futuros motores nativos deverá ser validada em dispositivos reais Mali/Adreno.
-
-## Projeto independente e licenciamento
-
-Código próprio sob [MIT](LICENSE). Pacotes opcionais externos **não estão** incluídos nesta fase e possuem licenças individuais. VeloWin não é associado a Valve, WineHQ, FEX, Box64, Winlator ou GameHub.
+Código de aplicação próprio sob [MIT](LICENSE); dependências externas permanecem com suas licenças. VeloWin não é associado a Winlator, Valve, WineHQ, Box64, FEX ou GameHub.
