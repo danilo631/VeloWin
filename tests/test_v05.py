@@ -6,13 +6,15 @@ ROOT=Path(__file__).resolve().parents[1]
 SRC=ROOT/"app/src/main/java/dev/velowin/app"
 
 class VulkanControllerContracts(unittest.TestCase):
-    def test_wsi_probe_is_capability_only(self):
+    def test_wsi_probe_creates_swapchain_without_presentation(self):
         src=(ROOT/"app/src/main/cpp/vulkan_wsi.c").read_text()
         for piece in ("vkCreateAndroidSurfaceKHR","vkGetPhysicalDeviceSurfaceSupportKHR",
                       "vkGetPhysicalDeviceSurfaceCapabilitiesKHR","VK_KHR_SWAPCHAIN_EXTENSION_NAME",
-                      "vkDestroySurfaceKHR","ANativeWindow_release"):
+                      "vkDestroySurfaceKHR","ANativeWindow_release",
+                      "vkCreateSwapchainKHR","vkDestroySwapchainKHR",
+                      "vkGetSwapchainImagesKHR","vkCreateDevice"):
             self.assertIn(piece,src)
-        for forbidden in ("vkQueuePresentKHR","vkCreateSwapchainKHR","vkCmdDraw"):
+        for forbidden in ("vkQueuePresentKHR","vkCmdDraw"):
             self.assertNotIn(forbidden,src)
         cmake=(ROOT/"app/src/main/cpp/CMakeLists.txt").read_text()
         self.assertIn("vulkan_wsi.c",cmake)
