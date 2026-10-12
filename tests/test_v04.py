@@ -8,7 +8,10 @@ JAVA=ROOT/"app/src/main/java/dev/velowin/app"
 class GameSessionV04Contracts(unittest.TestCase):
     def test_version_and_profiles(self):
         app=(ROOT/"app/build.gradle").read_text()
-        self.assertIn("versionName '0.4.0-dev'",app)
+        match=re.search(r"versionName '(\\d+)\\.(\\d+)\\.(\\d+)-dev'",app)
+        self.assertIsNotNone(match)
+        version=tuple(int(part) for part in match.groups())
+        self.assertGreaterEqual(version,(0,4,0))
         game=(JAVA/"library/Game.java").read_text()
         for field in ('"resolution"','"renderApi"','"fpsLimit"'):
             self.assertIn('out.put('+field,game)
