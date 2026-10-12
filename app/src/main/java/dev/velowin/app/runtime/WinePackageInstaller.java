@@ -272,6 +272,27 @@ public final class WinePackageInstaller {
         });
     }
 
+    /** Explicit recovery for an app/process killed mid extraction. Never touches completed installations. */
+    public static int cleanupUnfinished(Context context) throws IOException {
+        File base = new File(context.getFilesDir(), "wine-filesystems");
+        if (!base.isDirectory()) return 0;
+        int removed = 0;
+        File[] files = base.listFiles();
+        if (files == null) throw new IOException("Não foi possível listar instalações Wine.");
+        for (File directory : files) {
+            if (!directory.getName().matches(
+                    "\\.staging-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                    || !directory.isDirectory()
+                    || Files.isSymbolicLink(directory.toPath()))
+                continue;
+            if (!directory.getCanonicalFile().getParentFile().equals(base.getCanonicalFile()))
+                throw new IOException("Diretório de recuperação inválido.");
+            deleteTree(directory);
+            removed++;
+        }
+        return removed;
+    }
+
     public static void uninstall(Context context, RuntimeStore.Installed source) throws IOException {
         File dest = destination(context, source);
         if (!dest.exists()) return;
