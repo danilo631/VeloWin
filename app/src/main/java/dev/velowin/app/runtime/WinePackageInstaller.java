@@ -160,6 +160,8 @@ public final class WinePackageInstaller {
                         if (!parent.isDirectory() && !parent.mkdirs())
                             throw new IOException("Falha ao preparar diretório.");
                         if (dest.exists()) throw new IOException("Arquivo sobreposto.");
+                        if (temp.getUsableSpace() < length + 64L * 1024 * 1024)
+                            throw new IOException("Armazenamento insuficiente para extrair Wine.");
                         try (FileOutputStream out = new FileOutputStream(dest)) {
                             long count = 0;
                             while (count < length) {
@@ -169,6 +171,9 @@ public final class WinePackageInstaller {
                                 if (n < 0) throw new IOException("Arquivo TAR truncado.");
                                 out.write(buf, 0, n);
                                 count += n;
+                                if (count % (8L * 1024 * 1024) < n
+                                        && temp.getUsableSpace() < 64L * 1024 * 1024)
+                                    throw new IOException("Armazenamento ficou insuficiente durante extração.");
                             }
                         }
                         Os.chmod(dest.getAbsolutePath(), (entry.getMode() & 0111) != 0 ? 0700 : 0600);
