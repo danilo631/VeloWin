@@ -8,6 +8,7 @@
 
 - **Wine Android/Bionic experimental**: busca de versões [GameNative/proton-wine](https://github.com/GameNative/proton-wine/releases) para **x86-64 ou ARM64EC**, validação do digest SHA-256 publicado nos assets GitHub, download seguro, registro local e instalação de arquivos WCP Zstandard/TAR isolada com controle de paths/symlinks, perfil `profile.json`, ELF e rollback.
 - **Linux/glibc separado**: mantém downloads e extração Wine WoW64 de Kron4ek do VeloWin 0.2, sem misturar os ambientes.
+- **Teste Wine controlado**: no APK experimental, após preparar o WCP Bionic x86-64, o botão **Testar Wine --version** tenta executar Wine via Box64 por até 9s. É um autoteste, não execução de jogo.
 - **Box64 ARM64/Bionic**: novo [workflow experimental](.github/workflows/box64-bionic.yml) compila uma revisão fixa do upstream com Android NDK, inspeciona linker Bionic/ELF e produz APK diagnóstico com o tradutor embutido. No app, há autoteste opcional `box64 -v`. O APK de depuração padrão **não inclui Box64**.
 - **Vulkan nativo**: `app/src/main/cpp/native_probe.c` interroga a biblioteca Vulkan Android via JNI para identificar GPU, versão de API e algumas extensões. Vulkan funcionando não significa DXVK ou VKD3D ativo.
 - **Controles e áudio**: laboratório Canvas com eventos Android reais de toque, joystick/gamepad, botões e tom curto de teste via `AudioTrack`.

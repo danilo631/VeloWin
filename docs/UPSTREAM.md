@@ -1,5 +1,7 @@
 # VeloWin — bases consolidadas analisadas
 
+**VeloWin 0.3-dev:** o APK convencional inclui Vulkan JNI próprio e Commons Compress/XZ/zstd-jni para extrair WCP GameNative. Um **workflow experimental** compila Box64 do commit upstream fixado e o empacota em APK separado, conservando a licença MIT em `app/src/main/assets/BOX64_LICENSE.txt`. O aplicativo convencional não contém Box64, Wine ou DXVK, e nenhum APK foi validado com jogos Windows.
+
 Esta implementação da aplicação é própria. Os projetos abaixo foram conferidos no GitHub; **não** são copiados nem embalados como motores do VeloWin 0.2.
 
 | Projeto | Papel técnico | Descobertas / decisão |

@@ -29,3 +29,12 @@ class BionicNativePipelineTest(unittest.TestCase):
         gate=(SRC/"engine/EngineGate.java").read_text()
         self.assertIn("isReady(Context context)",gate)
         self.assertIn("return false",gate)
+
+    def test_opt_in_wine_execution_only(self):
+        wine=(SRC/"engine/WineVersionSmoke.java").read_text()
+        self.assertIn('"--version"',wine)
+        self.assertIn("BionicWineInstaller.installed",wine)
+        self.assertIn("Box64Smoke.bundled",wine)
+        self.assertIn("waitFor(9,TimeUnit.SECONDS)",wine)
+        self.assertIn("destroyForcibly",wine)
+        self.assertNotIn("getRuntime()",wine)

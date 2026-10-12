@@ -53,6 +53,13 @@ jobs:
           file /tmp/bionic-wine
           readelf -h /tmp/bionic-wine | sed -n '1,24p'
           readelf -l /tmp/bionic-wine | grep -E 'INTERP|Requesting' || true
+      - name: Inspect the actual linked Wine ELF target
+        run: |
+          tar -xOf /tmp/bionic.tar lib/wine/x86_64-unix/wine > /tmp/bionic-wine-linked
+          file /tmp/bionic-wine-linked
+          readelf -h /tmp/bionic-wine-linked | tee /tmp/bionic-elf.txt
+          grep -Eq 'Machine:.*(X86-64|Advanced Micro Devices X86-64)' /tmp/bionic-elf.txt
+          readelf -l /tmp/bionic-wine-linked | grep -E 'INTERP|Requesting' || true
       - uses: actions/upload-artifact@v4
         with:
           name: bionic-wcp-layout-inspection

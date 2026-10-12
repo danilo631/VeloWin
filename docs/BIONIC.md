@@ -31,7 +31,8 @@ Jogo renderizado e áudio no Android      [AINDA NÃO FUNCIONA]
 4. **Catálogo GameNative**: valida nomes `proton-x.y-z-...wcp`, URL GitHub canônica, tamanho e `assets[].digest=sha256:...`; baixa só por TLS/CDN permitida e armazena localmente.
 5. **Instalador WCP**: confirmado no workflow real que o pacote Proton 11.0-2 x86_64 de 10/10/2026 é **Zstandard TAR**, com `profile.json`, `bin/wine` link simbólico para `../lib/wine/x86_64-unix/wine`, pastas `bin/lib` e `prefixPack.txz`. O `BionicWineInstaller` revalida SHA-256 e examina links, caminhos, tamanho, manifesto, presença da imagem ELF de arquitetura esperada e só então instala atomicamente. A extração ainda não foi validada num aparelho físico.
 6. **Build Box64 Bionic**: workflow experimental compila o commit upstream `c6a8c4472f74f9ad204d35195f084b5f996b12e3` para ARM64 com NDK 27.2, confirma linker Android e dependência `libc.so`, e cria um APK experimental. Os testes de CI **não são um teste real do Box64 em aparelho**.
-7. **Pré-requisitos de launch**: os bloqueios são explícitos: prefixo Wine não preparado, Wine display/audio/input ausentes, DXVK e compatibilidade de GPU por jogo ainda não implementados. O botão Jogar não executa binários.
+7. **Teste de inicialização Wine controlado**: o APK Box64 experimental oferece **Wine --version** apenas para WCP x86-64 validado, com confirmação, sem shell e timeout de 9 segundos. O diagnóstico ainda não foi executado em aparelho Android físico.
+8. **Pré-requisitos de launch**: os bloqueios são explícitos: prefixo Wine não preparado, Wine display/audio/input ausentes, DXVK e compatibilidade de GPU por jogo ainda não implementados. O botão Jogar não executa binários.
 
 ## Segurança e limitações
 
