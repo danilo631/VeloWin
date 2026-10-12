@@ -127,7 +127,9 @@ public final class ContainerLabActivity extends Activity {
         labelRow(actions,"Wine --version",ContainerCommand.Action.WINE_VERSION,
             "Preparar prefixo",ContainerCommand.Action.PREFIX_PREPARE);
         labelRow(actions,"CMD /c ver",ContainerCommand.Action.CMD_VERSION,
-            "Wineboot -u",ContainerCommand.Action.WINEBOOT);
+            "Testar Win32",ContainerCommand.Action.WIN32_SMOKE);
+        labelRow(actions,"Wineboot -u",ContainerCommand.Action.WINEBOOT,
+            "Arquivos",ContainerCommand.Action.FILES);
         labelRow(actions,"Testar EXE",ContainerCommand.Action.RUN_EXE,
             "Encerrar Wine",ContainerCommand.Action.STOP_WIN_SERVER);
 
@@ -218,7 +220,11 @@ public final class ContainerLabActivity extends Activity {
             transcript.setLength(0);screen.setText("");return;
         }
         if(ContainerCommand.requiresConsent(action)) {
-            String prompt=action==ContainerCommand.Action.RUN_EXE
+            String prompt=action==ContainerCommand.Action.WIN32_SMOKE
+                ? "Executará um pequeno programa Win32 do próprio VeloWin, compilado "
+                  +"no GitHub Actions, via Wine Bionic e Box64. Ele escreve um marcador "
+                  +"de sucesso no console. Não abre janela, testa GPU ou inicia jogos."
+                :action==ContainerCommand.Action.RUN_EXE
                 ? "O VeloWin tentará executar o arquivo Windows importado, "
                   +"em processo Wine/Box64 experimental. Programas desconhecidos podem "
                   +"acessar dados do aplicativo. A importação copia somente o EXE "
@@ -231,7 +237,8 @@ public final class ContainerLabActivity extends Activity {
                   +"ativo; use Encerrar Wine depois.";
             new AlertDialog.Builder(this)
                 .setTitle(action==ContainerCommand.Action.RUN_EXE
-                    ?"Testar executável Windows?":"Executar wineboot?")
+                    ?"Testar executável Windows?":action==ContainerCommand.Action.WIN32_SMOKE
+                    ?"Executar teste Win32 do VeloWin?":"Executar wineboot?")
                 .setMessage(prompt)
                 .setNegativeButton("Cancelar",null)
                 .setPositiveButton("Eu entendo — testar",(d,w)->runAction(action)).show();

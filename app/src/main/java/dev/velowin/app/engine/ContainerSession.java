@@ -14,6 +14,7 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -146,6 +147,18 @@ public final class ContainerSession {
                     30000,cancelled,"Wineboot -u (experimental)")
                     +"\nPode ser necessário encerrar wineserver -k. "
                     +"Não há servidor X11 embutido.";
+            case WIN32_SMOKE:
+                BionicRelease smokeWine=needWine();
+                needPrefix(smokeWine);
+                File executable=ownSmokeBinary(cancelled);
+                String smokeReport=probe(wineCommand(smokeWine,executable.getAbsolutePath()),
+                    environment(smokeWine,true),25000,cancelled,"VeloWin Win32 Smoke (x86_64)");
+                boolean passed=smokeReport.contains("Código 0 /")
+                    && smokeReport.contains("VELO_WIN32_SMOKE_OK")
+                    && !smokeReport.contains("Tempo limite");
+                return (passed?"TESTE WIN32 PASSOU: marcador e código 0.\n"
+                    :"TESTE WIN32 NÃO VALIDADO: conferir processo, libs e saída.\n")
+                    +smokeReport+"\nIsto não comprova renderização de jogos.";
             case RUN_EXE:
                 BionicRelease run=needWine();
                 needPrefix(run);
@@ -258,6 +271,47 @@ public final class ContainerSession {
         if(result.timeout || result.cancelled)
             report+="\nAviso: processos Wine filhos podem permanecer; use wineserver -k.";
         return report;
+    }
+
+    /**
+     * A minimal Windows PE built from our own checked-in source code during CI.
+     * Not a Windows game. Has a unique stdout success marker.
+     */
+    private File ownSmokeBinary(AtomicBoolean cancelled) throws Exception {
+        File work=BionicWorkspace.prepare(ctx);
+        File dir=new File(work,"smoke");
+        if(!dir.isDirectory() && !dir.mkdirs())
+            throw new IOException("Falha ao preparar área de teste Win32.");
+        File destination=new File(dir,"velowin-smoke.exe");
+        File temp=new File(dir,".velowin-smoke.part");
+        if(temp.exists() && !temp.delete())
+            throw new IOException("Teste anterior ainda em preparação.");
+        int total=0;
+        try(InputStream in=ctx.getAssets().open("velowin-smoke.exe");
+            FileOutputStream out=new FileOutputStream(temp)) {
+            byte[] block=new byte[16384];
+            int read;
+            while((read=in.read(block))!=-1) {
+                if(cancelled.get()||Thread.currentThread().isInterrupted())
+                    throw new IOException("Cópia do teste cancelada.");
+                total+=read;
+                if(total>4*1024*1024)
+                    throw new IOException("Executável de teste inesperadamente grande.");
+                out.write(block,0,read);
+            }
+            out.getFD().sync();
+        }catch(Exception failure){temp.delete();throw failure;}
+        try(InputStream validate=new FileInputStream(temp)) {
+            if(!"x86_64".equals(PeInspector.inspect(validate)))
+                throw new IOException("O executável do teste não é PE x86_64.");
+        }catch(Exception failure){temp.delete();throw failure;}
+        if(destination.exists() && !destination.delete())
+            throw new IOException("Não foi possível substituir o teste Win32 antigo.");
+        if(!temp.renameTo(destination)) {
+            temp.delete();
+            throw new IOException("Não foi possível disponibilizar teste Win32.");
+        }
+        return destination;
     }
 
     /** Copy one SAF-selected EXE only; no neighboring DLLs/assets are imported. */

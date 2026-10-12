@@ -111,7 +111,7 @@ jobs:
       - name: Install native Box64 cross-compile tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq cmake ninja-build file
+          sudo apt-get install -y -qq cmake ninja-build file gcc-mingw-w64-x86-64
       - name: Download pinned Box64 Bionic source
         run: |
           git clone -q https://github.com/ptitSeb/box64.git /tmp/box64-src
@@ -145,6 +145,14 @@ jobs:
           cp /tmp/box64-src/LICENSE /tmp/velowin-Box64-LICENSE.txt
           echo "Box64 source commit: c6a8c4472f74f9ad204d35195f084b5f996b12e3" >> /tmp/velowin-box64-audit.txt
           sha256sum app/src/main/jniLibs/arm64-v8a/libvelobox64.so | tee -a /tmp/velowin-box64-audit.txt
+      - name: Build trusted Win32 console smoke program for Wine Bionic
+        run: |
+          set -euo pipefail
+          x86_64-w64-mingw32-gcc -O2 -s -static-libgcc \
+            -o app/src/main/assets/velowin-smoke.exe tests/win32/velowin_smoke.c
+          file app/src/main/assets/velowin-smoke.exe
+          file app/src/main/assets/velowin-smoke.exe | grep -Eq 'PE32\+.*x86-64'
+          sha256sum app/src/main/assets/velowin-smoke.exe | tee /tmp/velowin-win32-smoke-sha.txt
       - name: Assemble Box64-enabled primary debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
       - name: Confirm APK contains executable Box64
@@ -154,6 +162,7 @@ jobs:
           test -s "$APK"
           unzip -l "$APK" | grep -F 'lib/arm64-v8a/libvelobox64.so'
           unzip -l "$APK" | grep -F 'lib/arm64-v8a/libvelowin_probe.so'
+          unzip -l "$APK" | grep -F 'assets/velowin-smoke.exe'
           unzip -p "$APK" lib/arm64-v8a/libvelobox64.so | sha256sum
       - name: Upload Box64 audit
         uses: actions/upload-artifact@v4
@@ -162,6 +171,7 @@ jobs:
           path: |
             /tmp/velowin-box64-audit.txt
             /tmp/velowin-Box64-LICENSE.txt
+            /tmp/velowin-win32-smoke-sha.txt
           if-no-files-found: error
           retention-days: 14
       - name: Upload APK

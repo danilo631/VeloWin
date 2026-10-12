@@ -24,6 +24,8 @@ class ContainerLabContracts(unittest.TestCase):
         self.assertIn("case \"run exe\"",parser)
         core=(APP/"engine/ContainerSession.java").read_text()
         self.assertIn("BoundedProcess.run",core)
+        self.assertIn("VELO_WIN32_SMOKE_OK",core)
+        self.assertIn("ctx.getAssets().open(\"velowin-smoke.exe\")",core)
         self.assertIn("BionicWineInstaller.installed",core)
         self.assertIn("WinePrefixManager.templateReady",core)
         self.assertIn("PeInspector.inspect",core)
@@ -35,7 +37,7 @@ class ContainerLabContracts(unittest.TestCase):
 
     def test_diagnostics_and_consent(self):
         ui=(APP/"ContainerLabActivity.java").read_text()
-        for needle in ("Compartilhar log","Cancelar teste","wineserver",
+        for needle in ("Compartilhar log","Cancelar teste","Testar Win32","wineserver",
                        "requiresConsent","ContainerCommand.Action.PREFIX_PREPARE","setPositiveButton"):
             self.assertIn(needle,ui)
         self.assertIn("versionName '0.7.0-dev'",

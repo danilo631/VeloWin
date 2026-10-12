@@ -20,7 +20,7 @@ Quando o app exibe `Box64 arm64 ... with Dynarec`, `Código 0`, isso confirma **
 2. Na **Biblioteca**, adicione um `.exe` (SAF do Android) e abra as configurações para escolher a versão **Wine Bionic x86_64** e backend **BOX64**. Também existe seleção automática conservadora quando nenhum runtime foi escolhido.
 3. Toque **Entrar no contêiner** no cartão do jogo.
 4. Use **Preparar prefixo** (`prefix prepare`); a operação extrai `prefixPack.txz` do Wine instalado para um diretório privado do jogo. Não executa `wineboot`.
-5. Rode **Wine --version**, depois **CMD /c ver**. São processos de teste Bionic/Box64; o resultado deve ser interpretado pela saída/código, não pela existência do botão.
+5. Rode **Wine --version**, depois **CMD /c ver**. Use também o botão **Testar Win32**, que executa um PE x86_64 compilado do código próprio do VeloWin no GitHub Actions. Somente **código 0 com o marcador `VELO_WIN32_SMOKE_OK`** comprova que esse programa de teste foi executado por Wine. São processos de teste Bionic/Box64; o resultado deve ser interpretado pela saída/código, não pela existência do botão.
 6. **Wineboot -u** exige consentimento e pode alterar os arquivos do prefixo. O processo direto termina em no máximo 30 segundos; wineserver/filhos podem sobreviver, portanto há **Encerrar Wine** (`wineserver -k`).
 7. **Testar EXE** exige consentimento e copia apenas o executável escolhido para a área privada do app, com limite de 384 MiB. Recursos/DLLs externos da pasta original **não** são copiados.
 8. Compartilhe o log em **Compartilhar log**; registre o texto completo do erro sem tokens ou informações pessoais.
@@ -36,6 +36,7 @@ wine --version
 prefix prepare
 prefix status
 wine cmd /c ver
+win32 test
 wineboot -u
 run exe
 wineserver -k

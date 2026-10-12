@@ -10,7 +10,7 @@ import java.util.Locale;
 public final class ContainerCommand {
     public enum Action {
         HELP, STATUS, CLEAR, BOX64_VERSION, WINE_VERSION, PREFIX_PREPARE,
-        PREFIX_STATUS, WINEBOOT, CMD_VERSION, RUN_EXE, STOP_WIN_SERVER, FILES
+        PREFIX_STATUS, WINEBOOT, CMD_VERSION, WIN32_SMOKE, RUN_EXE, STOP_WIN_SERVER, FILES
     }
 
     private ContainerCommand() {}
@@ -28,6 +28,7 @@ public final class ContainerCommand {
             case "prefix status": case "prefix": return Action.PREFIX_STATUS;
             case "wineboot -u": case "wineboot --init": return Action.WINEBOOT;
             case "wine cmd /c ver": case "cmd /c ver": return Action.CMD_VERSION;
+            case "win32 test": case "teste win32": return Action.WIN32_SMOKE;
             case "run exe": case "testar exe": return Action.RUN_EXE;
             case "wineserver -k": case "stop": return Action.STOP_WIN_SERVER;
             case "files": case "arquivos": return Action.FILES;
@@ -36,7 +37,8 @@ public final class ContainerCommand {
     }
 
     public static boolean requiresConsent(Action action) {
-        return action == Action.WINEBOOT || action == Action.RUN_EXE;
+        return action == Action.WINEBOOT || action == Action.RUN_EXE
+            || action == Action.WIN32_SMOKE;
     }
 
     public static String manual() {
@@ -50,6 +52,7 @@ public final class ContainerCommand {
             + "prefix status       — verificar prefixo\n"
             + "wineboot -u         — inicialização experimental Wine (confirmação)\n"
             + "wine cmd /c ver     — executar programa Win32 sem janela\n"
+            + "win32 test          — executável de teste do próprio VeloWin\n"
             + "run exe             — tentar EXE importado (confirmação)\n"
             + "wineserver -k       — solicitar encerramento do wineserver\n"
             + "clear               — limpar console\n\n"
