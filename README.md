@@ -2,6 +2,17 @@
 
 **VeloWin** é um aplicativo Android independente para gerenciamento de jogos Windows e desenvolvimento de uma pilha de compatibilidade sem depender do código do Winlator. A experiência privilegia biblioteca simples, perfis automáticos, diagnóstico integrado e recursos avançados opcionais — inspiração de usabilidade em apps como GameHub, mas com código, marca e UI próprios.
 
+## VeloWin 0.5.0-dev — Vulkan WSI + controle virtual real no Android
+
+Esta versão adiciona laboratórios de capacidades nativas sem misturar funcionalidades Android com alegações de execução Windows.
+
+- **Vulkan na superfície do Android**: um novo laboratório NDK/JNI cria e consulta `VkSurfaceKHR`, verifica filas de apresentação, extensões de superfície e suporte a `VK_KHR_swapchain` na GPU real. **Não** cria a swapchain nem apresenta frames de jogos.
+- **Gamepad e controle virtual multitouch**: novo painel original com joystick, D-pad, A/B/X/Y, START/BACK e shoulders, além de entrada USB/Bluetooth; uma classe Java independente combina entradas físicas e touch num snapshot de botões/analógicos/gatilhos semelhante ao XInput.
+- **Deadzone e integridade de input**: tratamento de analógicos, hat switch, gatilhos, valores inválidos, liberação de botões ao mudar de aplicativo e preservação da outra fonte durante uso misto de touch+controle.
+- **Regressões Java e CI NDK**: testes de mapeamento, atualização de AndroidManifest, nova Activity e código Vulkan nativo, com APK no GitHub Actions.
+
+Para testar no telefone: **Sistema → Testar apresentação Vulkan nativa (WSI)** e **Sistema → Testar controles virtuais e gamepad**. Nenhuma dessas funções injeta eventos Win32, inicializa DXVK ou inicia jogos. Mais detalhes: [Laboratórios Vulkan/entrada v0.5](docs/VULKAN_WSI_INPUT_V05.md).
+
 ## VeloWin 0.4.0-dev — Bionic, prefixos independentes e perfis completos
 
 **Verificação real do WCP:** o GitHub Actions confirmou o pacote de referência GameNative contendo `.wine/drive_c`, `system.reg` e unidades Wine. O instalador preserva C: e omite o link Z: que apontaria para a raiz do Android. Mais detalhes em [Prefixos e perfis](docs/PROFILES_AND_PREFIXES.md).
@@ -34,7 +45,7 @@ Veja [Prefixos e perfis](docs/PROFILES_AND_PREFIXES.md) e [projeto do motor Bion
 
 ## APKs pelo GitHub Actions
 
-- **[VeloWin Android](https://github.com/danilo631/VeloWin/actions/workflows/android.yml)**: testes Java/Python, JNI Vulkan e APK debug padrão, artefato `velowin-v04-debug`.
+- **[VeloWin Android](https://github.com/danilo631/VeloWin/actions/workflows/android.yml)**: testes Java/Python, JNI Vulkan e APK debug padrão, artefato `velowin-v05-debug`.
 - **[Experimental Box64 Bionic Integration](https://github.com/danilo631/VeloWin/actions/workflows/box64-bionic.yml)**: compila Box64 upstream para AArch64/Bionic, confere ABI, insere `libvelobox64.so` e produz o artefato `velowin-box64-bionic-experimental`.
 - **[Verify Bionic Proton WCP Layout](https://github.com/danilo631/VeloWin/actions/workflows/bionic-wcp-inspect.yml)**: confere checksum de um release GameNative real, tipo Zstandard/TAR, perfil e layouts. Não executa binários desconhecidos.
 
