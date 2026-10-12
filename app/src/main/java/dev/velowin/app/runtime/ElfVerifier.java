@@ -75,6 +75,36 @@ public final class ElfVerifier {
         } catch (IOException err) { return false; }
     }
 
+    /** Require the Android/Bionic dynamic linker, never Linux glibc ld-linux. */
+    public static boolean isBionicMachine(File binary, int machine) {
+        if (!isMachine(binary, machine)) return false;
+        try (RandomAccessFile in = new RandomAccessFile(binary, "r")) {
+            byte[] head = new byte[64];
+            in.readFully(head);
+            long phoff=longLe(head,32);
+            int phsize=shortLe(head,54), phcount=shortLe(head,56);
+            if(phoff<64 || phsize<56 || phcount<1 || phcount>256
+                    || phoff>in.length() ||
+                    (long)phsize*phcount>in.length()-phoff)return false;
+            byte[] ph=new byte[56];
+            for(int i=0;i<phcount;i++){
+                in.seek(phoff+(long)i*phsize);
+                in.readFully(ph);
+                if(intLe(ph,0)!=3)continue; // PT_INTERP
+                long offset=longLe(ph,8),size=longLe(ph,32);
+                if(offset<0||size<2||size>256||offset>in.length()-size)return false;
+                byte[] path=new byte[(int)size];
+                in.seek(offset);
+                in.readFully(path);
+                int n=0;
+                while(n<path.length&&path[n]!=0)n++;
+                String linker=new String(path,0,n,StandardCharsets.UTF_8);
+                return "/system/bin/linker64".equals(linker);
+            }
+        }catch(IOException e){return false;}
+        return false;
+    }
+
     private static int shortLe(byte[] bytes, int offset) {
         return (bytes[offset] & 255) | ((bytes[offset+1] & 255) << 8);
     }
