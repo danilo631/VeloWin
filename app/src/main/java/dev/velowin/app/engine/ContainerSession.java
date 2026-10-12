@@ -14,7 +14,6 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -40,10 +39,23 @@ public final class ContainerSession {
 
     private final Context ctx;
     private final Game game;
+    private final boolean diagnosticMode;
 
-    public ContainerSession(Context context, Game game) {
+    public ContainerSession(Context context, Game selectedGame) {
         ctx=context.getApplicationContext();
-        this.game=game==null?null:game.copy();
+        diagnosticMode=selectedGame==null;
+        if(diagnosticMode) {
+            // Persistent private test container. Not added to GameStore.
+            Game demo=new Game("Contêiner de diagnóstico", "");
+            demo.id=UUID.nameUUIDFromBytes(
+                "VeloWin/Bionic/demo-container/v1".getBytes(StandardCharsets.UTF_8))
+                .toString();
+            demo.architecture="x86_64";
+            demo.backend="BOX64";
+            this.game=demo;
+        }else{
+            this.game=selectedGame.copy();
+        }
     }
 
     public BionicRelease selectedWine() {
@@ -69,8 +81,11 @@ public final class ContainerSession {
         BionicRelease e=selectedWine();
         out.append(e==null?"não selecionado/instalado":e.tag);
         out.append("\nWine ARM64EC/FEX: pipeline distinto, indisponível neste console");
-        if(game==null) {
-            out.append("\nModo: diagnóstico sem jogo.");
+        if(diagnosticMode) {
+            out.append("\nModo: contêiner de diagnóstico independente da Biblioteca")
+                .append("\nWineprefix: ");
+            if(e!=null)out.append(WinePrefixManager.status(ctx,game,e));
+            else out.append("indisponível");
         }else{
             out.append("\nJogo: ").append(game.title)
                 .append("\nArquitetura PE: ").append(game.architecture)
@@ -94,10 +109,10 @@ public final class ContainerSession {
             .append("\nHOME: ").append(new File(base,"home").getAbsolutePath())
             .append("\nTMPDIR: ").append(new File(base,"tmp").getAbsolutePath())
             .append("\nLogs: ").append(new File(base,"logs").getAbsolutePath());
-        if(game!=null) {
-            b.append("\nPrefixo: ").append(WinePrefixManager.location(ctx,game).getAbsolutePath())
-                .append("\nExecutável: content:// (SAF), ainda não copiado");
-        }
+        b.append("\nPrefixo: ").append(WinePrefixManager.location(ctx,game).getAbsolutePath());
+        if(!diagnosticMode)
+            b.append("\nExecutável: content:// (SAF), ainda não copiado");
+        else b.append("\nExecutável importado: nenhum (modo diagnóstico)");
         b.append("\nEssas pastas não oferecem isolamento de permissões de kernel.");
         return b.toString();
     }
@@ -111,7 +126,7 @@ public final class ContainerSession {
             case STATUS: return status();
             case FILES: return files();
             case PREFIX_STATUS:
-                if(game==null)return "Escolha um jogo para criar um prefixo individual.";
+                // O contêiner de diagnóstico também tem seu próprio Wineprefix.
                 BionicRelease checked=selectedWine();
                 return checked==null?"Wine Bionic não instalado. Abra Runtimes."
                     :WinePrefixManager.status(ctx,game,checked);
@@ -121,7 +136,7 @@ public final class ContainerSession {
                 return probe(Arrays.asList(box64().getAbsolutePath(),"-v"),null,
                     8000,cancelled,"Box64 -v");
             case PREFIX_PREPARE:
-                if(game==null)return "Abra o contêiner de um jogo da Biblioteca.";
+                // O modo de diagnóstico usa seu prefixo privado estável.
                 BionicRelease packageWine=needWine();
                 if(WinePrefixManager.templateReady(ctx,game,packageWine))
                     return "Template Wineprefix já preparado. Wineboot ainda não validado.";
@@ -160,6 +175,8 @@ public final class ContainerSession {
                     :"TESTE WIN32 NÃO VALIDADO: conferir processo, libs e saída.\n")
                     +smokeReport+"\nIsto não comprova renderização de jogos.";
             case RUN_EXE:
+                if(diagnosticMode)
+                    throw new IOException("Para executar seu EXE, entre pelo jogo na Biblioteca.");
                 BionicRelease run=needWine();
                 needPrefix(run);
                 File exe=stageGame(cancelled,feedback);

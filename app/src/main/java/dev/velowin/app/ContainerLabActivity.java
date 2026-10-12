@@ -195,7 +195,8 @@ public final class ContainerLabActivity extends Activity {
             +"Este é um ambiente privado do aplicativo, não um contêiner Linux completo.\n"
             +"Comandos disponíveis: help\n\n");
         append(session.status()+"\n\n");
-        if(game==null)append("Para preparar Wineprefix, abra pela Biblioteca → jogo → Contêiner.\n");
+        if(game==null)append("Laboratório sem jogo: instale Wine Bionic em Runtimes, "
+            +"execute prefix prepare e depois win32 test.\n");
     }
 
     private void submitInput() {

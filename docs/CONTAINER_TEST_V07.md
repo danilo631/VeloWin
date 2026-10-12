@@ -13,7 +13,7 @@ Quando o app exibe `Box64 arm64 ... with Dynarec`, `Código 0`, isso confirma **
 
 ## Abrir um contêiner
 
-**Sem jogo:** em **Runtimes → Abrir console de contêiner (sem jogo)**. Execute `status`, `box64 -v` e, após preparar Wine, `wine --version`.
+**Sem jogo:** em **Runtimes → Abrir console de contêiner (sem jogo)**. Execute `status`, `box64 -v` e, após instalar Wine Bionic x86_64, `wine --version`. O laboratório possui um prefixo próprio: use `prefix prepare`, `win32 test` e `wine cmd /c ver` sem importar jogos. `run exe` permanece exclusivo para jogos da Biblioteca.
 
 **Por jogo:**
 1. Em Runtimes, obtenha e instale um WCP **Wine Android/Bionic x86_64** da fonte GameNative, com hash validado. Não use Linux/glibc Kron4ek nem ARM64EC no console Box64.

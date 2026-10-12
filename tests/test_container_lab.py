@@ -24,6 +24,8 @@ class ContainerLabContracts(unittest.TestCase):
         self.assertIn("case \"run exe\"",parser)
         core=(APP/"engine/ContainerSession.java").read_text()
         self.assertIn("BoundedProcess.run",core)
+        self.assertIn("UUID.nameUUIDFromBytes",core)
+        self.assertIn("if(diagnosticMode)",core)
         self.assertIn("VELO_WIN32_SMOKE_OK",core)
         self.assertIn("ctx.getAssets().open(\"velowin-smoke.exe\")",core)
         self.assertIn("BionicWineInstaller.installed",core)

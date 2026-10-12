@@ -4,7 +4,7 @@
 
 ## VeloWin 0.7.0-dev — entrar no contêiner Bionic e testar Wine no Android
 
-O APK principal mantém **Box64 Bionic incluído**. Na **Biblioteca**, cada jogo agora oferece **Entrar no contêiner**. Na aba **Runtimes**, existe um console de diagnóstico mesmo sem jogo.
+O APK principal mantém **Box64 Bionic incluído**. Na **Biblioteca**, cada jogo agora oferece **Entrar no contêiner**. Na aba **Runtimes**, há um contêiner de diagnóstico independente que também pode preparar um Wineprefix e testar Win32 sem importar jogo.
 
 O console implementado de fato executa **Box64 -v**, **Wine --version** e, com Wine Bionic x86_64 instalado e Wineprefix do jogo preparado, permite tentar **wine cmd /c ver**, executar um **smoke test Win32 próprio** com marcador verificável, **wineboot -u** e **run exe** (somente após confirmação). Há cancelamento, saída limitada, histórico local, compartilhamento de log e cópia restrita via SAF de um EXE autorizado pelo usuário. Comandos arbitrários de shell não são aceitos.
 

@@ -48,7 +48,7 @@ public final class ContainerCommand {
             + "files               — pastas privadas do contêiner\n"
             + "box64 -v            — executar tradutor Bionic\n"
             + "wine --version      — teste Wine + Box64\n"
-            + "prefix prepare      — extrair template do prefixo do jogo\n"
+            + "prefix prepare      — extrair template do contêiner atual\n"
             + "prefix status       — verificar prefixo\n"
             + "wineboot -u         — inicialização experimental Wine (confirmação)\n"
             + "wine cmd /c ver     — executar programa Win32 sem janela\n"
