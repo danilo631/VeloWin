@@ -33,18 +33,21 @@ jobs:
             app/src/main/java/dev/velowin/app/runtime/ElfVerifier.java \
             app/src/main/java/dev/velowin/app/library/PeInspector.java \
             app/src/main/java/dev/velowin/app/engine/RuntimeStrategy.java \
+            app/src/main/java/dev/velowin/app/engine/EngineReadiness.java \
             app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
             tests/ReleasePolicyTest.java \
             tests/ArchiveSafetyTest.java \
             tests/ElfVerifierTest.java \
             tests/PeInspectorTest.java \
             tests/RuntimeStrategyTest.java \
+            tests/EngineReadinessTest.java \
             tests/BionicReleasePolicyTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
           java -ea -cp /tmp/velowin-tests ArchiveSafetyTest
           java -ea -cp /tmp/velowin-tests ElfVerifierTest
           java -ea -cp /tmp/velowin-tests PeInspectorTest
           java -ea -cp /tmp/velowin-tests RuntimeStrategyTest
+          java -ea -cp /tmp/velowin-tests EngineReadinessTest
           java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
       - name: Static Android source contracts
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
