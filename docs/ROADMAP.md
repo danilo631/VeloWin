@@ -1,3 +1,30 @@
+# VeloWin: evolução do motor e do contêiner
+
+## v0.7 — console por jogo e testes reais Bionic
+- [x] Interface interna **Entrar no contêiner** na biblioteca e no catálogo de Wine
+- [x] Comandos permitidos sem shell: Box64 -v, Wine --version, Wine CMD ver, wineboot opt-in e teste experimental de EXE
+- [x] Wineprefix separado por UUID, template WCP verificado, variáveis HOME/TMPDIR/WINEPREFIX e Box64 Dynarec por título
+- [x] Cópia SAF limitada de executável selecionado, sem acesso global aos arquivos
+- [x] Timeout, cancelamento do processo direto, saída limitada, logs internos e compartilhamento
+- [ ] Rodar Wine CMD e Wineboot em Android físico e diagnosticar suas dependências
+- [ ] Integrar X server Wine real e Surface Android com renderização de janela, entrada e som
+
+## v0.6 — Box64 Bionic no APK principal
+- [x] Compilar e empacotar Box64 ARM64/Bionic com revisão upstream fixada
+- [x] Validar binário ARM64, linker Android e JNI Vulkan no GitHub Actions
+- [x] Device Vulkan/WSI e swapchain reais no laboratório Android
+- [ ] Confirmar Wine e EXE de teste em modelos reais (Mali/Adreno)
+
+## Próximas etapas do motor
+- [ ] Integrar ambiente X11/Wayland real ao Android com ciclo de vida das janelas
+- [ ] Mapear toque e controles para Wine/Win32, não só laboratório Android
+- [ ] Roteamento de áudio Wine para AudioTrack/AAudio e testes de latência
+- [ ] Integrar e auditar DLLs DXVK/VKD3D-Proton, Vulkan extensions e driver Android
+- [ ] FEX/ARM64EC como backend separado de Box64, com ABI e licenças verificadas
+- [ ] Gerenciar ciclo completo de processos Wine, incluindo filhos e wineserver
+- [ ] Executar jogo Windows real (janela, áudio, input, encerramento) em hardware físico
+- [ ] Assinaturas de release, backups e medições reais de estabilidade
+
 # Roadmap de execução VeloWin
 
 ## v0.1 — aplicativo independente

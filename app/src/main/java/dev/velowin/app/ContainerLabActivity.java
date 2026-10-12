@@ -122,7 +122,7 @@ public final class ContainerLabActivity extends Activity {
         LinearLayout actions=new LinearLayout(this);
         actions.setOrientation(LinearLayout.VERTICAL);
         main.addView(actions);
-        labelRow(actions,"Status","".equals("")?ContainerCommand.Action.STATUS:ContainerCommand.Action.STATUS,
+        labelRow(actions,"Status",ContainerCommand.Action.STATUS,
             "Box64 -v",ContainerCommand.Action.BOX64_VERSION);
         labelRow(actions,"Wine --version",ContainerCommand.Action.WINE_VERSION,
             "Preparar prefixo",ContainerCommand.Action.PREFIX_PREPARE);

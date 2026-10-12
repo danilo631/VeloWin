@@ -10,8 +10,8 @@ android {
         applicationId 'dev.velowin.app'
         minSdk 26
         targetSdk 34
-        versionCode 8
-        versionName '0.6.0-dev'
+        versionCode 9
+        versionName '0.7.0-dev'
     }
 
     ndkVersion '27.2.12479018'
