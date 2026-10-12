@@ -56,6 +56,8 @@ jobs:
           sed -n '1,100p' /tmp/wineprefix-template-paths.txt > /tmp/velowin-prefix-layout.txt
           grep -Fq system.reg /tmp/wineprefix-template-paths.txt
           grep -Fq drive_c /tmp/wineprefix-template-paths.txt
+          tar -tvJf /tmp/wineprefix-template.txz | grep 'dosdevices/' > /tmp/velowin-dosdevices.txt || true
+          cat /tmp/velowin-dosdevices.txt
           echo 'Wine registry and drive_c paths found. No Wine code executed.' >> /tmp/velowin-prefix-layout.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -64,5 +66,6 @@ jobs:
             /tmp/velowin-wcp-layout.txt
             /tmp/bionic-profile.json
             /tmp/velowin-prefix-layout.txt
+            /tmp/velowin-dosdevices.txt
             /tmp/bionic-elf.txt
           retention-days: 7
