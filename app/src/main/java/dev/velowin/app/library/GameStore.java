@@ -36,35 +36,48 @@ public final class GameStore {
         }
     }
 
-    public synchronized List<Game> all() { return new ArrayList<>(items); }
+    /** Return deep snapshots; UI changes must never mutate the store before durable write. */
+    public synchronized List<Game> all() {
+        ArrayList<Game> copies = new ArrayList<>();
+        for (Game item : items) copies.add(item.copy());
+        return copies;
+    }
     public synchronized boolean isDamaged() { return damaged; }
 
     public synchronized void put(Game game) throws IOException {
         ensureHealthy();
-        for (int i = 0; i < items.size(); i++) {
-            if (items.get(i).id.equals(game.id)) {
-                items.set(i, game);
-                persist();
-                return;
+        ArrayList<Game> updated = new ArrayList<>(items);
+        boolean found = false;
+        for (int i = 0; i < updated.size(); i++) {
+            if (updated.get(i).id.equals(game.id)) {
+                updated.set(i, game.copy());
+                found = true;
+                break;
             }
         }
-        items.add(game);
-        persist();
+        if (!found) updated.add(game.copy());
+        persist(updated);
+        items.clear();
+        items.addAll(updated);
     }
 
     public synchronized void remove(String id) throws IOException {
         ensureHealthy();
-        items.removeIf(item -> item.id.equals(id));
-        persist();
+        ArrayList<Game> updated = new ArrayList<>(items);
+        updated.removeIf(item -> item.id.equals(id));
+        persist(updated);
+        items.clear();
+        items.addAll(updated);
     }
 
     private void ensureHealthy() throws IOException {
         if (damaged) throw new IOException("A biblioteca local está danificada. Faça backup antes de alterar.");
     }
 
-    private void persist() throws IOException {
+    /** Two-phase update: write JSON first, then commit in-memory snapshot. */
+    private void persist(List<Game> snapshot) throws IOException {
         JSONArray data = new JSONArray();
-        try { for (Game game : items) data.put(game.toJson()); }
+        try { for (Game game : snapshot) data.put(game.toJson()); }
         catch (JSONException error) { throw new IOException("Failed to serialize library", error); }
         FileOutputStream out = null;
         try {
