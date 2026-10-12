@@ -1,6 +1,5 @@
 package dev.velowin.app.engine;
 
-import dev.velowin.app.runtime.ArchiveSafety;
 
 /**
  * Conservative policy for unpacked Wine prefix symlinks.
@@ -11,11 +10,11 @@ public final class PrefixLinkPolicy {
     public enum Decision { KEEP_RELATIVE, SKIP_HOST_ROOT_Z, REJECT }
     private PrefixLinkPolicy() {}
     public static Decision decide(String member,String target) {
-        String safe=ArchiveSafety.member(member);
+        String safe=PrefixArchivePath.member(member);
         if(safe==null || safe.isEmpty() || target==null)return Decision.REJECT;
         if(safe.endsWith("/dosdevices/z:") && "/".equals(target))
             return Decision.SKIP_HOST_ROOT_Z;
-        if(ArchiveSafety.symlinkTarget(safe,target)!=null)
+        if(PrefixArchivePath.linkTarget(safe,target)!=null)
             return Decision.KEEP_RELATIVE;
         return Decision.REJECT;
     }
