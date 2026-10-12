@@ -36,7 +36,7 @@ class ContainerLabContracts(unittest.TestCase):
     def test_diagnostics_and_consent(self):
         ui=(APP/"ContainerLabActivity.java").read_text()
         for needle in ("Compartilhar log","Cancelar teste","wineserver",
-                       "requiresConsent","prefix prepare","setPositiveButton"):
+                       "requiresConsent","ContainerCommand.Action.PREFIX_PREPARE","setPositiveButton"):
             self.assertIn(needle,ui)
         self.assertIn("versionName '0.7.0-dev'",
             (ROOT/"app/build.gradle").read_text())
