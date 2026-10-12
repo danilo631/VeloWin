@@ -146,8 +146,12 @@ public final class WinePrefixManager {
                     expanded+=len;
                     File target=confined(stage,name);
                     if(member.isSymbolicLink()) {
-                        if(ArchiveSafety.symlinkTarget(name,member.getLinkName())==null)
+                        PrefixLinkPolicy.Decision rule=
+                            PrefixLinkPolicy.decide(name,member.getLinkName());
+                        if(rule==PrefixLinkPolicy.Decision.REJECT)
                             throw new IOException("Link absoluto ou fora da pasta: "+name);
+                        // Wine Z: -> / would reveal host Android. Omit this drive.
+                        if(rule==PrefixLinkPolicy.Decision.SKIP_HOST_ROOT_Z)continue;
                         pending.add(new String[]{name,member.getLinkName()});
                         links.add(name);
                         continue;
@@ -210,6 +214,7 @@ public final class WinePrefixManager {
             receipt.put("wineSha256",wine.digest);
             receipt.put("prefixRoot",prefixRoot);
             receipt.put("state","TEMPLATE_ONLY");
+            receipt.put("hostRootDriveExcluded",true);
             try(FileOutputStream out=new FileOutputStream(new File(stage,MARKER))) {
                 out.write(receipt.toString().getBytes(StandardCharsets.UTF_8));
                 out.getFD().sync();
