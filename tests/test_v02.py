@@ -10,6 +10,8 @@ class VeloWinV02Test(unittest.TestCase):
         assert "MessageDigest.getInstance(\"SHA-256\")" in installer
         assert "deleteTree(temp)" in installer
         assert "getNextEntry()" in installer
+        assert "cleanupUnfinished" in installer
+        assert "Files.walkFileTree" in installer
         assert "Runtime.exec" not in installer
         assert "ProcessBuilder" not in installer
         self.assertIn("EngineGate.reason", (JAVA / "MainActivity.java").read_text())
