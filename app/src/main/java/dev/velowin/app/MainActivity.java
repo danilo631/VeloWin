@@ -444,9 +444,14 @@ public final class MainActivity extends Activity {
                     game.graphics=profile.driver;
                     game.renderApi="VKD3D_CANDIDATE".equals(profile.direct3d)?"VKD3D"
                         :"DXVK_CANDIDATE".equals(profile.direct3d)?"DXVK":"WINED3D";
+                    boolean hot=false;
+                    if(Build.VERSION.SDK_INT>=29){
+                        PowerManager heat=(PowerManager)getSystemService(POWER_SERVICE);
+                        hot=heat!=null && heat.getCurrentThermalStatus()>=PowerManager.THERMAL_STATUS_SEVERE;
+                    }
                     game.resolution=GameSessionConfig.recommendation(mem.totalMem,
-                        gpu.renderer.toLowerCase(Locale.ROOT).contains("mali"),false);
-                    game.fpsLimit=60;
+                        gpu.renderer.toLowerCase(Locale.ROOT).contains("mali"),hot);
+                    game.fpsLimit=hot?30:60;
                     game.boxPreset=profile.tier==dev.velowin.app.engine.SmartProfile.Tier.COMPATIBILITY
                         ?"STABILITY":profile.tier==dev.velowin.app.engine.SmartProfile.Tier.PERFORMANCE
                         ?"PERFORMANCE":"BALANCED";
@@ -519,12 +524,21 @@ public final class MainActivity extends Activity {
 
     private BionicRelease selectedBionic(Game game) {
         GameRuntimeChoice choice=GameRuntimeChoice.fromStored(game.runtimeTag);
-        if(choice.kind!=GameRuntimeChoice.Kind.BIONIC)return null;
+        BionicRelease only=null;
+        int compatible=0;
         for(BionicRelease entry:BionicArchiveStore.saved(this)){
-            if(entry.tag.equals(choice.tag) && entry.arch.equals(choice.arch)
-                && BionicWineInstaller.installed(this,entry))return entry;
+            if(!BionicWineInstaller.installed(this,entry))continue;
+            if(choice.kind==GameRuntimeChoice.Kind.BIONIC
+                && entry.tag.equals(choice.tag) && entry.arch.equals(choice.arch))
+                return entry;
+            if(choice.kind==GameRuntimeChoice.Kind.AUTO
+                && ("BOX64".equals(game.backend) && "x86_64".equals(entry.arch)
+                    || "FEX".equals(game.backend) && "ARM64EC".equals(entry.arch))) {
+                only=entry;compatible++;
+            }
         }
-        return null;
+        // An automatic match is only safe if unambiguous.
+        return choice.kind==GameRuntimeChoice.Kind.AUTO && compatible==1 ? only : null;
     }
 
     private void chooseDisplayProfile(Game game) {
@@ -695,7 +709,8 @@ public final class MainActivity extends Activity {
                 runOnUiThread(()->{
                     busy=false;dialog.dismiss();
                     if(isFinishing()||isDestroyed())return;
-                    draw();
+                    game.runtimeTag=GameRuntimeChoice.bionic(version.tag,version.arch);
+                    saveGame(game);
                     message("Prefixo preparado",WinePrefixManager.status(this,game,version)
                         +"\nNenhum executável Windows foi iniciado.");
                 });
@@ -805,8 +820,9 @@ public final class MainActivity extends Activity {
 
     private void confirmRemoveGame(Game game) {
         new AlertDialog.Builder(this).setTitle("Remover " + game.title + "?")
-            .setMessage("Somente a entrada na biblioteca será removida. O arquivo original "
-                + "do jogo permanece no armazenamento do Android.")
+            .setMessage("Somente o cadastro será removido. O executável original "
+                + "e os dados do prefixo ficam preservados. Para liberar saves "
+                + "e arquivos Wine privados, remova o prefixo antes no menu do jogo.")
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Remover", (d, w) -> {
                 try { games.remove(game.id); draw(); }
