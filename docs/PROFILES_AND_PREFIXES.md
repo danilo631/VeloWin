@@ -20,6 +20,7 @@ Inspirado no fluxo **biblioteca e perfis** (GameHub/Winlator) e **ambientes vers
 - Caminhos relativos canonizados, duplicados proibidos, links simbólicos estritamente relativos, sem dispositivos, pipes ou hardlinks.
 - Gravação em `.prefix-stage-<UUID>` e movimentação para a pasta final somente após presença de `system.reg` e `drive_c`.
 - Um cancelamento remove o staging sem seguir symlinks. Em encerramentos inesperados, a ação **Limpar prefixos de jogos interrompidos** recupera espaço.
+- O pacote de referência GameNative `proton-11.0-2-20261010` foi inspecionado no CI sem executar binários; o template usa a pasta `.wine/`, C: aponta para `../drive_c` e Z: aponta para `/`. Por segurança, o VeloWin **não instala o link Z: → /**, impedindo acesso à raiz do Android. C: é mantido como link relativo e restrito à pasta do jogo.
 - O marcador `TEMPLATE_ONLY` registra a origem do Wine e o UUID do jogo, não afirma que `wineboot` executou.
 - Apagar o prefixo é uma operação explícita que pode apagar saves e configurações. Remover apenas o jogo da biblioteca **não** apaga os dados privados por segurança.
 
