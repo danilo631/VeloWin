@@ -475,6 +475,7 @@ public final class MainActivity extends Activity {
             + "com SHA-256 publicado. Pacotes Android/Bionic incompatíveis "
             + "são excluídos do catálogo.", 13, MUTED, false, 4);
         action(intro, "Buscar versões no GitHub", this::findReleases, true);
+        action(intro, "Limpar preparações interrompidas", this::cleanupWine, false);
 
         LinearLayout availability = card();
         add(availability, "Motor de execução", 16, WHITE, true, 6);
@@ -596,6 +597,32 @@ public final class MainActivity extends Activity {
                 });
             }
         });
+    }
+
+    private void cleanupWine() {
+        if (busy) { message("Operação em andamento", "Finalize o download/instalação atual."); return; }
+        new AlertDialog.Builder(this).setTitle("Limpar arquivos temporários?")
+            .setMessage("Remove somente pastas temporárias de extrações Wine interrompidas. "
+                + "As versões preparadas e os downloads são preservados.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Limpar", (dialog, which) -> {
+                busy = true;
+                worker.execute(() -> {
+                    int count = 0;
+                    Exception failure = null;
+                    try { count = WinePackageInstaller.cleanupUnfinished(getApplicationContext()); }
+                    catch (Exception error) { failure = error; }
+                    final int removed = count;
+                    final Exception error = failure;
+                    runOnUiThread(() -> {
+                        busy = false;
+                        if (isDestroyed() || isFinishing()) return;
+                        if (error != null) message("Falha na limpeza", errorText(error));
+                        else message("Recuperação concluída", removed
+                            + " pasta(s) temporária(s) removida(s).");
+                    });
+                });
+            }).show();
     }
 
     private void prepareWine(RuntimeStore.Installed entry) {
