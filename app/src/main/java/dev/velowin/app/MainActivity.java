@@ -666,6 +666,11 @@ public final class MainActivity extends Activity {
     }
 
     private void removeRuntime(RuntimeStore.Installed info) {
+        if (WinePackageInstaller.installed(this, info)) {
+            message("Remova a preparação primeiro", "Para evitar um pacote instalado sem registro, "
+                + "remova os arquivos Wine preparados antes de excluir o download.");
+            return;
+        }
         new AlertDialog.Builder(this).setTitle("Remover " + info.tag + "?")
             .setMessage("O arquivo baixado será excluído. Seus jogos serão preservados.")
             .setNegativeButton("Cancelar", null)
@@ -683,6 +688,7 @@ public final class MainActivity extends Activity {
         card.addView(status);
         worker.execute(() -> {
             GpuInspector.Info info = GpuInspector.inspect(getApplicationContext());
+            String environment = dev.velowin.app.hardware.DeviceHealth.snapshot(getApplicationContext());
             runOnUiThread(() -> {
                 if (!isDestroyed() && tab == 2) {
                     status.setText("Renderizador  " + info.renderer
@@ -690,7 +696,7 @@ public final class MainActivity extends Activity {
                         + "\nOpenGL ES  " + info.opengl
                         + "\nVulkan  " + info.vulkan
                         + "\nABIs  " + info.abi
-                        + "\n\n" + info.recommendation);
+                        + "\n\n" + info.recommendation + "\n\n" + environment);
                 }
             });
         });
