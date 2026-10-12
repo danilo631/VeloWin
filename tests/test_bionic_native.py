@@ -9,7 +9,7 @@ class BionicNativePipelineTest(unittest.TestCase):
         s=(SRC/"runtime/BionicWineInstaller.java").read_text()
         for item in ("ZstdInputStream","TarArchiveInputStream","ArchiveSafety.member",
                      "ArchiveSafety.symlinkTarget","MessageDigest.getInstance(\"SHA-256\")",
-                     "profile.json","prefixPack.txz","ElfVerifier.isMachine",
+                     "profile.json","prefixPack.txz","ElfVerifier.isBionicMachine",
                      "Files.move","cleanupUnfinished"):
             self.assertIn(item,s)
         self.assertNotIn("ProcessBuilder",s)
