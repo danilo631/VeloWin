@@ -22,6 +22,13 @@ import android.os.Build;
 import android.os.PowerManager;
 import dev.velowin.app.library.PeInspector;
 import dev.velowin.app.runtime.WinePackageInstaller;
+import dev.velowin.app.runtime.BionicRelease;
+import dev.velowin.app.runtime.BionicCatalog;
+import dev.velowin.app.runtime.BionicArchiveStore;
+import dev.velowin.app.hardware.NativeCapabilities;
+import dev.velowin.app.hardware.InputAudioLabActivity;
+import dev.velowin.app.engine.BionicWorkspace;
+import dev.velowin.app.engine.RuntimeStrategy;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -468,9 +475,17 @@ public final class MainActivity extends Activity {
     }
 
     private void renderRuntimes() {
-        section("Runtimes", "Componentes baixados de fontes abertas e verificáveis.");
+        section("Runtimes", "Android Bionic e Linux/glibc são ambientes separados.");
+        LinearLayout bionic = card();
+        add(bionic, "Android Bionic · Experimental", 17, WHITE, true, 7);
+        add(bionic, "Wine/Proton Android do GameNative, com hashes SHA-256 da API GitHub. "
+            + "Arquivos WCP são baixados e verificados, mas ainda não são executados. "
+            + "Preferir x86-64 + Box64; ARM64EC/FEX requer testes próprios.",13,MUTED,false,5);
+        action(bionic, "Buscar Proton Bionic no GitHub", this::findBionicReleases, true);
+        action(bionic, "Preparar workspace Android", this::prepareWorkspace, false);
+        add(bionic, BionicWorkspace.status(this), 12, MUTED, false, 2);
         LinearLayout intro = card();
-        add(intro, "Wine e Proton", 17, WHITE, true, 7);
+        add(intro, "Wine Linux / glibc", 17, WHITE, true, 7);
         add(intro, "Catálogo: Kron4ek/Wine-Builds. Builds Linux x86_64 WoW64 "
             + "com SHA-256 publicado. Pacotes Android/Bionic incompatíveis "
             + "são excluídos do catálogo.", 13, MUTED, false, 4);
@@ -599,6 +614,100 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private void prepareWorkspace() {
+        worker.execute(() -> {
+            String result;
+            try {
+                java.io.File root = BionicWorkspace.prepare(getApplicationContext());
+                result="Área privada preparada em " + root.getName()
+                    + ". Não é uma instalação Linux rootfs nem Wineprefix executável.";
+            } catch(Exception e){result="Falha: " + errorText(e);}
+            final String messageText=result;
+            runOnUiThread(() -> {
+                if(!isDestroyed()&&!isFinishing()){draw();message("Bionic workspace",messageText);}
+            });
+        });
+    }
+
+    private void findBionicReleases() {
+        if(busy){message("Operação em andamento","Conclua a operação atual.");return;}
+        busy=true;
+        ProgressDialog dialog=new ProgressDialog(this);
+        dialog.setTitle("GameNative GitHub");
+        dialog.setMessage("Buscando pacotes Wine Bionic com SHA-256…");
+        dialog.setIndeterminate(true);
+        dialog.setCancelable(false);
+        dialog.show();
+        worker.execute(()->{
+            try{
+                ArrayList<BionicRelease> results=BionicCatalog.search();
+                runOnUiThread(()->{
+                    busy=false;dialog.dismiss();
+                    if(isDestroyed()||isFinishing())return;
+                    String[] names=new String[results.size()];
+                    for(int i=0;i<results.size();i++){
+                        BionicRelease item=results.get(i);
+                        names[i]=item+"  "+(BionicArchiveStore.exists(this,item)?"[baixado]":"");
+                    }
+                    new AlertDialog.Builder(this).setTitle("Wine Android / Bionic")
+                        .setItems(names,(d,idx)->confirmBionicDownload(results.get(idx)))
+                        .setNegativeButton("Cancelar",null).show();
+                });
+            }catch(Exception failure){
+                runOnUiThread(()->{
+                    busy=false;dialog.dismiss();
+                    if(!isDestroyed()&&!isFinishing())
+                        message("Não foi possível acessar GameNative",errorText(failure));
+                });
+            }
+        });
+    }
+
+    private void confirmBionicDownload(BionicRelease entry) {
+        String explained="Fonte: GameNative/proton-wine\nABI: "+entry.arch
+            +"\nSHA-256: "+entry.digest
+            +"\n\nPacote WCP Android/Bionic, não compatível com o Wine glibc. "
+            +"Será baixado e verificado sem extração ou execução automática.";
+        new AlertDialog.Builder(this).setTitle(entry.toString()).setMessage(explained)
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton("Baixar pacote Bionic",(d,w)->downloadBionic(entry))
+            .show();
+    }
+
+    private void downloadBionic(BionicRelease entry) {
+        if(busy){message("Operação em andamento","Conclua a operação atual.");return;}
+        busy=true;cancelling.set(false);
+        ProgressDialog dialog=new ProgressDialog(this);
+        dialog.setTitle("Wine Bionic "+entry.arch);
+        dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        dialog.setMax(100);
+        dialog.setCancelable(false);
+        dialog.setButton(ProgressDialog.BUTTON_NEGATIVE,"Cancelar",
+            (d,w)->cancelling.set(true));
+        dialog.show();
+        worker.execute(()->{
+            try{
+                BionicArchiveStore.download(getApplicationContext(),entry,cancelling,
+                    progress->runOnUiThread(()->{
+                        if(!isDestroyed()&&!isFinishing())dialog.setProgress(progress);
+                    }));
+                runOnUiThread(()->{
+                    busy=false;dialog.dismiss();
+                    if(!isDestroyed()&&!isFinishing())
+                        message("Pacote Bionic verificado","Download SHA-256 concluído: "
+                            +entry.name+". A ativação de Wine requer extração WCP "
+                            +"segura, Box64/FEX, inicialização e integração de display/áudio.");
+                });
+            }catch(Exception failure){
+                runOnUiThread(()->{
+                    busy=false;dialog.dismiss();
+                    if(!isDestroyed()&&!isFinishing())
+                        message("Falha no download Bionic",errorText(failure));
+                });
+            }
+        });
+    }
+
     private void cleanupWine() {
         if (busy) { message("Operação em andamento", "Finalize o download/instalação atual."); return; }
         new AlertDialog.Builder(this).setTitle("Limpar arquivos temporários?")
@@ -717,6 +826,7 @@ public final class MainActivity extends Activity {
         worker.execute(() -> {
             GpuInspector.Info info = GpuInspector.inspect(getApplicationContext());
             String environment = dev.velowin.app.hardware.DeviceHealth.snapshot(getApplicationContext());
+            String nativeVulkan = NativeCapabilities.inspectVulkan();
             runOnUiThread(() -> {
                 if (!isDestroyed() && tab == 2) {
                     status.setText("Renderizador  " + info.renderer
@@ -724,7 +834,8 @@ public final class MainActivity extends Activity {
                         + "\nOpenGL ES  " + info.opengl
                         + "\nVulkan  " + info.vulkan
                         + "\nABIs  " + info.abi
-                        + "\n\n" + info.recommendation + "\n\n" + environment);
+                        + "\n\n" + info.recommendation + "\n\n" + nativeVulkan
+                        + "\n\n" + environment);
                 }
             });
         });
@@ -733,6 +844,7 @@ public final class MainActivity extends Activity {
         add(note, "VeloWin não altera frequências da GPU, root, ADB ou "
             + "bibliotecas do sistema. A disponibilidade real de Vulkan precisa "
             + "ser testada com um motor carregado.", 13, MUTED, false, 0);
+        action(note, "Testar áudio, toque e controle", () -> startActivity(new Intent(this, InputAudioLabActivity.class)), true);
         action(note, "Compartilhar diagnóstico do dispositivo", this::shareDiagnostics, false);
     }
 
@@ -747,6 +859,8 @@ public final class MainActivity extends Activity {
                 + "\nABI: " + info.abi
                 + "\nPolítica GPU: " + info.recommendation
                 + "\n" + dev.velowin.app.hardware.DeviceHealth.snapshot(getApplicationContext())
+                + "\nVulkan JNI: " + NativeCapabilities.inspectVulkan()
+                + "\nBionic: " + BionicWorkspace.status(this)
                 + "\nWine preparado: " + countPreparedWine()
                 + "\nMotor Windows: NÃO integrado";
             runOnUiThread(() -> {
@@ -774,12 +888,12 @@ public final class MainActivity extends Activity {
         return count;
     }
 
-    private String getVersionName() { return "0.2.0"; }
+    private String getVersionName() { return "0.3.0-dev"; }
 
     private void renderAbout() {
         section("Sobre o VeloWin", "Uma plataforma Android original, aberta e modular.");
         LinearLayout card = card();
-        add(card, "VeloWin 0.2.0", 18, WHITE, true, 7);
+        add(card, "VeloWin 0.3.0-dev", 18, WHITE, true, 7);
         add(card, "Interface própria, biblioteca com favoritos e inspeção PE, "
             + "diagnóstico gráfico/térmico, downloads SHA-256 e extração segura "
             + "de arquivos Wine. O motor de execução continua em desenvolvimento.", 13, MUTED, false, 10);
