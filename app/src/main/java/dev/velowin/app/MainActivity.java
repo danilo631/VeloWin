@@ -382,14 +382,42 @@ public final class MainActivity extends Activity {
     }
 
     private void autoConfigure(Game game) {
-        // Favor Bionic conservative defaults; never promise native game compatibility.
-        RuntimeStrategy.Selection selected=RuntimeStrategy.recommend(game.architecture,false);
-        game.backend=selected.translator==RuntimeStrategy.Translator.BOX64?"BOX64":"FEX";
-        game.graphics="SYSTEM";
-        saveGame(game);
-        message("Configuração automática",selected.explanation
-            + "\nVulkan do sistema foi escolhido, sem alterar o driver da GPU. "
-            + "O motor nativo ainda não está habilitado.");
+        String[] names = {"Compatibilidade", "Equilibrado (recomendado)", "Desempenho"};
+        new AlertDialog.Builder(this).setTitle("Perfil inteligente · " + game.title)
+            .setItems(names, (dialog, index) -> worker.execute(() -> {
+                GpuInspector.Info gpu = GpuInspector.inspect(getApplicationContext());
+                android.app.ActivityManager am=(android.app.ActivityManager)
+                    getSystemService(ACTIVITY_SERVICE);
+                android.app.ActivityManager.MemoryInfo mem=new android.app.ActivityManager.MemoryInfo();
+                if(am!=null)am.getMemoryInfo(mem);
+                int major=0, minor=0;
+                java.util.regex.Matcher parsed=java.util.regex.Pattern
+                    .compile("([0-9]+)\\.([0-9]+)").matcher(gpu.vulkan);
+                if(parsed.find()){
+                    major=Integer.parseInt(parsed.group(1));
+                    minor=Integer.parseInt(parsed.group(2));
+                }
+                dev.velowin.app.engine.SmartProfile.Tier tier=
+                    dev.velowin.app.engine.SmartProfile.Tier.values()[index];
+                dev.velowin.app.engine.SmartProfile profile=
+                    dev.velowin.app.engine.SmartProfile.recommend(
+                        gpu.renderer,major,minor,mem.totalMem,game.architecture,tier);
+                runOnUiThread(()->{
+                    if(isDestroyed()||isFinishing())return;
+                    game.backend="BOX64";
+                    game.graphics=profile.driver;
+                    saveGame(game);
+                    message("Perfil "+profile.tier,
+                        "Tradutor sugerido: "+profile.translator
+                        +"\nDriver: "+profile.driver
+                        +"\nDirect3D: "+profile.direct3d
+                        +"\nÁudio: "+profile.audio
+                        +"\nControles: "+profile.input
+                        +"\n\n"+profile.note
+                        +"\n\nCandidatos DXVK/VKD3D NÃO estão instalados.");
+                });
+            }))
+            .setNegativeButton("Cancelar",null).show();
     }
 
     private void saveGame(Game game) {
