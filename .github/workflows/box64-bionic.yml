@@ -1,13 +1,7 @@
-name: Experimental Box64 Bionic Integration
+name: Box64 Bionic Standalone Audit (manual)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main, 'feature/bionic-engine-foundation-v03']
-    paths:
-      - '.github/workflows/box64-bionic.yml'
-      - 'app/src/main/java/dev/velowin/app/engine/**'
-      - 'docs/BIONIC.md'
 
 permissions:
   contents: read
@@ -65,7 +59,7 @@ jobs:
           gradle :app:assembleDebug --no-daemon --stacktrace
       - uses: actions/upload-artifact@v4
         with:
-          name: velowin-v04-box64-bionic-experimental
+          name: velowin-box64-standalone-diagnostic
           path: |
             app/build/outputs/apk/debug/*.apk
             /tmp/box64-elf.txt
