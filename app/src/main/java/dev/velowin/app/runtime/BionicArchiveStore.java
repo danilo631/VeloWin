@@ -1,6 +1,9 @@
 package dev.velowin.app.runtime;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import org.json.JSONObject;
+import java.util.ArrayList;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -36,6 +39,10 @@ public final class BionicArchiveStore {
             throw new IOException("Espaço insuficiente.");
         File goal=verifiedFile(context,e);
         File stage=new File(root,e.tag+"--"+e.name+".part");
+        File backup=new File(root,e.tag+"--"+e.name+".backup");
+        if(backup.exists())throw new IOException("Recuperação Bionic pendente; preserve o pacote anterior.");
+        if(BionicWineInstaller.installed(context,e))
+            throw new IOException("Remova a preparação Wine antes de substituir o WCP.");
         if(stage.exists()&&!stage.delete())throw new IOException("Download parcial inacessível.");
         MessageDigest sha=MessageDigest.getInstance("SHA-256");
         long received=0;
@@ -75,14 +82,71 @@ public final class BionicArchiveStore {
             StringBuilder hash=new StringBuilder();
             for(byte x:sha.digest())hash.append(String.format(Locale.ROOT,"%02x",x&255));
             if(!e.digest.equals(hash.toString()))throw new IOException("SHA-256 WCP não confere.");
-            if(goal.exists()&&!goal.delete())throw new IOException("Pacote antigo não substituído.");
-            if(!stage.renameTo(goal))throw new IOException("Falha ao finalizar WCP.");
+            boolean original=goal.exists();
+            if(original&&!goal.renameTo(backup))
+                throw new IOException("Não foi possível preservar o WCP anterior.");
+            if(!stage.renameTo(goal)) {
+                if(original)backup.renameTo(goal);
+                throw new IOException("Falha ao finalizar WCP.");
+            }
+            try {
+                JSONObject receipt=new JSONObject();
+                receipt.put("tag",e.tag);
+                receipt.put("file",e.name);
+                receipt.put("uri",e.uri);
+                receipt.put("sha256",e.digest);
+                receipt.put("size",e.size);
+                receipt.put("arch",e.arch);
+                if(!preferences(context).edit().putString(e.tag+"--"+e.name,receipt.toString()).commit())
+                    throw new IOException("Não foi possível salvar registro WCP.");
+            }catch(Exception failed){
+                goal.delete();
+                if(original&&!backup.renameTo(goal))
+                    throw new IOException("Falha ao recuperar download anterior.",failed);
+                throw failed;
+            }
+            if(original&&!backup.delete())
+                android.util.Log.w("VeloWinBionic","Backup WCP antigo ainda presente.");
             return goal;
         }catch(Exception fail){
             stage.delete();
             throw fail;
         }
     }
+    private static SharedPreferences preferences(Context context) {
+        return context.getSharedPreferences("velowin-bionic-index-v1",Context.MODE_PRIVATE);
+    }
+    /** Saved release metadata, never trusted as executable authenticity. Install re-hashes. */
+    public static ArrayList<BionicRelease> saved(Context context) {
+        ArrayList<BionicRelease> result=new ArrayList<>();
+        for(Object raw:preferences(context).getAll().values()){
+            if(!(raw instanceof String))continue;
+            try {
+                JSONObject j=new JSONObject((String)raw);
+                String tag=j.getString("tag"),name=j.getString("file"),
+                    url=j.getString("uri"),sha=j.getString("sha256"),
+                    arch=j.getString("arch");
+                long size=j.getLong("size");
+                if(!BionicReleasePolicy.valid(tag,name,url,"sha256:"+sha,size))continue;
+                BionicRelease entry=new BionicRelease(tag,name,url,sha,size,arch);
+                if(exists(context,entry))result.add(entry);
+            }catch(Exception ignored){}
+        }
+        result.sort((a,b)->b.tag.compareTo(a.tag));
+        return result;
+    }
+
+    /** Intentionally disallows deletion while Wine is installed. */
+    public static void remove(Context ctx,BionicRelease release) throws IOException {
+        if(BionicWineInstaller.installed(ctx,release))
+            throw new IOException("Remova primeiro os arquivos Wine preparados.");
+        File downloaded=verifiedFile(ctx,release);
+        if(downloaded.exists()&&!downloaded.delete())
+            throw new IOException("Falha ao apagar WCP.");
+        if(!preferences(ctx).edit().remove(release.tag+"--"+release.name).commit())
+            throw new IOException("Falha ao atualizar o registro Bionic.");
+    }
+
     public static boolean exists(Context context,BionicRelease e) {
         try{File f=verifiedFile(context,e);return f.isFile()&&f.length()==e.size;}
         catch(IOException ex){return false;}
