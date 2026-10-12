@@ -42,3 +42,13 @@
 - [ ] Gráficos *Windows* em Surface Android (servidor X11/WSI), áudio e controle Wine reais
 - [ ] `wineboot` e prefixo com gerenciamento seguro de filhos/encerramento, dependências verificadas
 - [ ] Implementação de DXVK e VKD3D validada em jogos autorizados Mali/Adreno
+
+## v0.5-dev — Vulkan Surface e laboratório de entrada
+- [x] Consultar WSI de Surface Android real via JNI, incluindo fila de apresentação e requisitos swapchain
+- [x] Laboratório original de controles virtuais multitouch com estados semelhantes ao XInput
+- [x] Capturar eventos de gamepad Bluetooth/USB e combinar sem conflito com toque
+- [x] Testes Java para deadzone, gatilhos, botões e liberação; build NDK/Android
+- [ ] Criar swapchain Vulkan e apresentar frames reais de teste
+- [ ] Servidor X11/Windows conectado à Surface Android e DLLs DXVK realmente integradas
+- [ ] Traduzir estado XInput-like para eventos Win32/X11; áudio Wine para Android
+- [ ] Executar `wineboot` e programas Windows mínimos em Android ARM64 real
