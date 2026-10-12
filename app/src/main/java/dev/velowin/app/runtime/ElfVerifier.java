@@ -61,6 +61,20 @@ public final class ElfVerifier {
         }
     }
 
+    /** Verify ELF class, endian and e_machine without imposing Linux/glibc interpreter. */
+    public static boolean isMachine(File binary, int expectedMachine) {
+        if (binary == null || !binary.isFile()) return false;
+        try (RandomAccessFile in = new RandomAccessFile(binary, "r")) {
+            if (in.length() < 64) return false;
+            byte[] head = new byte[64];
+            in.readFully(head);
+            return head[0] == 0x7f && head[1] == 'E' && head[2] == 'L'
+                && head[3] == 'F' && head[4] == 2 && head[5] == 1
+                && shortLe(head, 18) == expectedMachine
+                && (shortLe(head, 16) == 2 || shortLe(head, 16) == 3);
+        } catch (IOException err) { return false; }
+    }
+
     private static int shortLe(byte[] bytes, int offset) {
         return (bytes[offset] & 255) | ((bytes[offset+1] & 255) << 8);
     }
