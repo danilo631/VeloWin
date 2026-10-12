@@ -31,6 +31,7 @@ import dev.velowin.app.hardware.InputAudioLabActivity;
 import dev.velowin.app.engine.BionicWorkspace;
 import dev.velowin.app.engine.RuntimeStrategy;
 import dev.velowin.app.engine.Box64Smoke;
+import dev.velowin.app.engine.WineVersionSmoke;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -512,6 +513,9 @@ public final class MainActivity extends Activity {
                     12,MUTED,false,2);
                 action(packages,ready?"Gerenciar Wine Bionic":"Preparar Wine Bionic",
                     ()->confirmBionicDownload(entry),false);
+                if(ready && Box64Smoke.bundled(this) && "x86_64".equals(entry.arch))
+                    action(packages,"Testar Wine --version (experimental)",
+                        ()->confirmWineVersionTest(entry),false);
                 if(!ready)
                     action(packages,"Excluir arquivo WCP",
                         ()->deleteBionicArchive(entry),false);
@@ -646,6 +650,32 @@ public final class MainActivity extends Activity {
                 });
             }
         });
+    }
+
+    private void confirmWineVersionTest(BionicRelease release) {
+        if(busy){message("Operação em andamento","Finalize a operação anterior.");return;}
+        new AlertDialog.Builder(this).setTitle("Executar diagnóstico Wine?")
+            .setMessage("Este comando executará apenas Wine --version através do "
+                +"Box64 Bionic experimental, usando os arquivos já extraídos. "
+                +"Não roda jogos, não cria prefixos e termina após 9 segundos. "
+                +"O pacote GameNative é de terceiros e experimental.")
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton("Executar teste",(d,w)->{
+                busy=true;
+                ProgressDialog working=new ProgressDialog(this);
+                working.setMessage("Executando Wine --version em processo isolado…");
+                working.setIndeterminate(true);
+                working.setCancelable(false);
+                working.show();
+                worker.execute(()->{
+                    String result=WineVersionSmoke.run(getApplicationContext(),release);
+                    runOnUiThread(()->{
+                        busy=false;working.dismiss();
+                        if(!isDestroyed()&&!isFinishing())
+                            message("Resultado Wine/Box64",result);
+                    });
+                });
+            }).show();
     }
 
     private void deleteBionicArchive(BionicRelease entry) {
