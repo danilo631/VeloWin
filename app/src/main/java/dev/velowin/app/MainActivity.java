@@ -27,6 +27,7 @@ import dev.velowin.app.runtime.BionicCatalog;
 import dev.velowin.app.runtime.BionicArchiveStore;
 import dev.velowin.app.runtime.BionicWineInstaller;
 import dev.velowin.app.hardware.NativeCapabilities;
+import dev.velowin.app.hardware.GpuDriverPolicy;
 import dev.velowin.app.hardware.InputAudioLabActivity;
 import dev.velowin.app.hardware.GpuSurfaceLabActivity;
 import dev.velowin.app.hardware.VulkanWsiLabActivity;
@@ -810,14 +811,34 @@ public final class MainActivity extends Activity {
     }
 
     private void chooseGraphics(Game game) {
-        String[] options = {"Sistema (padrão seguro)", "Turnip (Adreno, a validar)"};
-        new AlertDialog.Builder(this).setTitle("Driver para " + game.title)
-            .setSingleChoiceItems(options, "TURNIP".equals(game.graphics) ? 1 : 0, (d, index) -> {
-                game.graphics = index == 0 ? "SYSTEM" : "TURNIP";
-                try { games.put(game); draw(); }
-                catch (IOException error) { message("Falha", errorText(error)); }
-                d.dismiss();
-            }).setNegativeButton("Cancelar", null).show();
+        worker.execute(() -> {
+            GpuInspector.Info gpu=GpuInspector.inspect(getApplicationContext());
+            String nativeReport=NativeCapabilities.inspectVulkan();
+            GpuDriverPolicy policy=GpuDriverPolicy.evaluate(gpu.renderer,game.graphics,nativeReport);
+            runOnUiThread(() -> {
+                if(isFinishing()||isDestroyed())return;
+                String[] options={
+                    "Vulkan do sistema Android (recomendado)",
+                    "Turnip (não incluído; somente GPUs Adreno compatíveis)"
+                };
+                new AlertDialog.Builder(this).setTitle("Driver gráfico · "+game.title)
+                    .setMessage(policy.report())
+                    .setSingleChoiceItems(options,"TURNIP".equals(game.graphics)?1:0,(d,index)->{
+                        d.dismiss();
+                        if(index==1) {
+                            message("Turnip não instalado",
+                                "VeloWin não inclui o driver Turnip. "
+                                +"Sem driver compilado, licença e testes de ICD "
+                                +"não podemos ativá-lo. Para Mali/Xclipse, "
+                                +"mantenha o Vulkan nativo do Android.");
+                            return;
+                        }
+                        game.graphics="SYSTEM";
+                        saveGame(game);
+                    })
+                    .setNegativeButton("Cancelar",null).show();
+            });
+        });
     }
 
     private void confirmRemoveGame(Game game) {
@@ -836,6 +857,9 @@ public final class MainActivity extends Activity {
         section("Runtimes", "Android Bionic e Linux/glibc são ambientes separados.");
         LinearLayout bionic = card();
         add(bionic, "Android Bionic · Experimental", 17, WHITE, true, 7);
+        add(bionic, "Box64 ARM64/Bionic: "+(Box64Smoke.bundled(this)
+            ?"incluído neste APK (usar Testar Box64 em Sistema para validar no aparelho)"
+            :"ausente neste APK"), 12, ACCENT, true, 7);
         add(bionic, "Wine/Proton Android do GameNative, com hashes SHA-256 da API GitHub. "
             + "Arquivos WCP são baixados e verificados, mas ainda não são executados. "
             + "Preferir x86-64 + Box64; ARM64EC/FEX requer testes próprios.",13,MUTED,false,5);
@@ -1342,6 +1366,7 @@ public final class MainActivity extends Activity {
             GpuInspector.Info info = GpuInspector.inspect(getApplicationContext());
             String environment = dev.velowin.app.hardware.DeviceHealth.snapshot(getApplicationContext());
             String nativeVulkan = NativeCapabilities.inspectVulkan();
+            String driverPolicy = GpuDriverPolicy.evaluate(info.renderer,"SYSTEM",nativeVulkan).report();
             runOnUiThread(() -> {
                 if (!isDestroyed() && tab == 2) {
                     status.setText("Renderizador  " + info.renderer
@@ -1350,6 +1375,7 @@ public final class MainActivity extends Activity {
                         + "\nVulkan  " + info.vulkan
                         + "\nABIs  " + info.abi
                         + "\n\n" + info.recommendation + "\n\n" + nativeVulkan
+                        + "\n\n" + driverPolicy
                         + "\n\n" + environment);
                 }
             });
@@ -1365,7 +1391,7 @@ public final class MainActivity extends Activity {
             () -> startActivity(new Intent(this, VulkanWsiLabActivity.class)), false);
         action(note, "Testar controles virtuais e gamepad",
             () -> startActivity(new Intent(this, VirtualControllerLabActivity.class)), false);
-        action(note, "Testar Box64 Bionic (experimental)", this::testBox64, false);
+        action(note, "Testar Box64 Bionic (incluído no APK)", this::testBox64, false);
         action(note, "Compartilhar diagnóstico do dispositivo", this::shareDiagnostics, false);
     }
 
@@ -1395,6 +1421,8 @@ public final class MainActivity extends Activity {
                 + "\nPolítica GPU: " + info.recommendation
                 + "\n" + dev.velowin.app.hardware.DeviceHealth.snapshot(getApplicationContext())
                 + "\nVulkan JNI: " + NativeCapabilities.inspectVulkan()
+                + "\nPolítica de drivers: " + GpuDriverPolicy.evaluate(
+                    info.renderer,"SYSTEM",NativeCapabilities.inspectVulkan()).report()
                 + "\nBox64 Bionic empacotado: " + Box64Smoke.bundled(this)
                 + "\nBionic: " + BionicWorkspace.status(this)
                 + "\nWine preparado: " + countPreparedWine()
