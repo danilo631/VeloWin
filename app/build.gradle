@@ -41,4 +41,5 @@ dependencies {
     // Native engines are not bundled. Commons Compress + XZ only parse Wine archives.
     implementation 'org.apache.commons:commons-compress:1.28.0'
     implementation 'org.tukaani:xz:1.10'
+    implementation 'com.github.luben:zstd-jni:1.5.7-3@aar'
 }
