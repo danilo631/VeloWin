@@ -27,6 +27,11 @@ public final class RuntimeDownloader {
 
         RuntimeStore registry = new RuntimeStore(context);
         if (registry.isDamaged()) throw new IOException("Registro local de runtimes danificado.");
+        for (RuntimeStore.Installed saved : registry.all()) {
+            if (saved.tag.equals(entry.tag) && saved.file.equals(entry.name)
+                    && WinePackageInstaller.installed(context, saved))
+                throw new IOException("Remova a preparação Wine existente antes de atualizar esse release.");
+        }
         File directory = registry.folder();
         if (directory.getUsableSpace() < entry.size + 128L * 1024 * 1024)
             throw new IOException("Sem espaço livre suficiente para o download.");
