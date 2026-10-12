@@ -372,7 +372,8 @@ public final class MainActivity extends Activity {
                 "Verificar acesso ao arquivo", "Remover da biblioteca",
                 "Aplicar configuração automática", "Ajustar Box64 Dynarec",
                 "Preparar prefixo Windows", "Pré-verificação de sessão",
-                "Resolução virtual e FPS", "Renderizador Direct3D"}, (d, which) -> {
+                "Resolução virtual e FPS", "Renderizador Direct3D",
+                "Testar Wine deste jogo", "Compartilhar perfil"}, (d, which) -> {
                 switch (which) {
                     case 0: message("Motor não disponível", EngineGate.reason(this, game)); break;
                     case 1: chooseBackend(game); break;
@@ -392,6 +393,8 @@ public final class MainActivity extends Activity {
                     case 12: sessionPreflight(game); break;
                     case 13: chooseDisplayProfile(game); break;
                     case 14: chooseDirect3d(game); break;
+                    case 15: gameWineSmoke(game); break;
+                    case 16: shareGameProfile(game); break;
                 }
             })
             .setNegativeButton("Fechar", null).show();
@@ -567,6 +570,81 @@ public final class MainActivity extends Activity {
                         GameSessionConfig.graphics(game.renderApi),false)
                         +". A seleção não instala DLLs nem ativa drivers.");
                 }).setNegativeButton("Cancelar",null).show();
+    }
+
+    private void gameWineSmoke(Game game) {
+        if(busy){message("Operação em andamento","Conclua a tarefa anterior.");return;}
+        BionicRelease entry=selectedBionic(game);
+        if(entry==null || !"x86_64".equals(entry.arch)){
+            message("Teste não disponível","Escolha Wine Bionic x86_64 preparado para este jogo. "
+                +"ARM64EC/FEX ainda não possui um autoteste integrado.");
+            return;
+        }
+        if(!Box64Smoke.bundled(this)){
+            message("Box64 não incluído","Use o APK experimental Box64 Bionic gerado pelo GitHub Actions.");
+            return;
+        }
+        new AlertDialog.Builder(this).setTitle("Testar Wine · "+game.title)
+            .setMessage("Executa somente Box64 → Wine --version, com o preset deste jogo "
+                +"e prazo de 9 segundos. Não inicia o EXE do jogo nem wineboot.")
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton("Executar teste",(d,w)->{
+                busy=true;
+                ProgressDialog dialog=new ProgressDialog(this);
+                dialog.setMessage("Executando diagnóstico Wine Bionic...");
+                dialog.setIndeterminate(true);
+                dialog.setCancelable(false);
+                dialog.show();
+                worker.execute(()->{
+                    String result=WineVersionSmoke.run(getApplicationContext(),entry,
+                        Box64Tuning.fromGame(game.boxPreset));
+                    runOnUiThread(()->{
+                        busy=false;dialog.dismiss();
+                        if(!isFinishing()&&!isDestroyed())message("Teste Wine/Box64",result);
+                    });
+                });
+            }).show();
+    }
+
+    private void shareGameProfile(Game game) {
+        BionicRelease wine=selectedBionic(game);
+        String report="VeloWin "+getVersionName()+"\nJogo: "+game.title
+            +"\nArquitetura Windows: "+game.architecture
+            +"\nTradutor: "+game.backend+" / preset "+game.boxPreset
+            +"\nGPU: "+game.graphics+" / D3D: "+game.renderApi
+            +"\nResolução: "+game.resolution+" / FPS alvo: "+game.fpsLimit
+            +"\nRuntime: "+GameRuntimeChoice.fromStored(game.runtimeTag).label()
+            +"\nPrefixo template: "+(wine!=null
+                && WinePrefixManager.templateReady(this,game,wine)?"sim":"não")
+            +"\nMotor Windows: não integrado"
+            +"\nObservação: configurações ainda não executam jogos.";
+        Intent intent=new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TEXT,report);
+        try{startActivity(Intent.createChooser(intent,"Compartilhar perfil VeloWin"));}
+        catch(ActivityNotFoundException fail){message("Perfil do jogo",report);}
+    }
+
+    private void cleanGamePrefixes() {
+        if(busy){message("Operação em andamento","Finalize a operação atual.");return;}
+        new AlertDialog.Builder(this).setTitle("Limpar prefixos temporários?")
+            .setMessage("Remove somente pastas de instalação temporária interrompida. "
+                +"Não apaga prefixos concluídos, jogos ou saves existentes.")
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton("Limpar",(d,w)->{
+                busy=true;
+                worker.execute(()->{
+                    int removed=0; Exception error=null;
+                    try{removed=WinePrefixManager.cleanupUnfinished(getApplicationContext());}
+                    catch(Exception failure){error=failure;}
+                    final int count=removed;final Exception problem=error;
+                    runOnUiThread(()->{
+                        busy=false;if(isDestroyed()||isFinishing())return;
+                        if(problem!=null)message("Limpeza não concluída",errorText(problem));
+                        else message("Limpeza de prefixos",count+" pasta(s) temporária(s) removida(s).");
+                    });
+                });
+            }).show();
     }
 
     private void prefixMenu(Game game) {
@@ -745,6 +823,7 @@ public final class MainActivity extends Activity {
             + "Preferir x86-64 + Box64; ARM64EC/FEX requer testes próprios.",13,MUTED,false,5);
         action(bionic, "Buscar Proton Bionic no GitHub", this::findBionicReleases, true);
         action(bionic, "Limpar extrações Bionic interrompidas", this::cleanBionic, false);
+        action(bionic, "Limpar prefixos de jogos interrompidos", this::cleanGamePrefixes, false);
         action(bionic, "Preparar workspace Android", this::prepareWorkspace, false);
         add(bionic, BionicWorkspace.status(this), 12, MUTED, false, 2);
         ArrayList<BionicRelease> cached=BionicArchiveStore.saved(this);
