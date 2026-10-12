@@ -34,6 +34,9 @@ import dev.velowin.app.engine.RuntimeStrategy;
 import dev.velowin.app.engine.Box64Smoke;
 import dev.velowin.app.engine.Box64Tuning;
 import dev.velowin.app.engine.WineVersionSmoke;
+import dev.velowin.app.engine.WinePrefixManager;
+import dev.velowin.app.engine.GameRuntimeChoice;
+import dev.velowin.app.engine.BionicSessionPlan;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -364,7 +367,8 @@ public final class MainActivity extends Activity {
                 "Configurar Vulkan", "Selecionar pacote Wine", "Renomear jogo",
                 "Anotações", game.favorite ? "Remover dos favoritos" : "Adicionar aos favoritos",
                 "Verificar acesso ao arquivo", "Remover da biblioteca",
-                "Aplicar configuração automática", "Ajustar Box64 Dynarec"}, (d, which) -> {
+                "Aplicar configuração automática", "Ajustar Box64 Dynarec",
+                "Preparar prefixo Windows", "Pré-verificação de sessão"}, (d, which) -> {
                 switch (which) {
                     case 0: message("Motor não disponível", EngineGate.reason(this, game)); break;
                     case 1: chooseBackend(game); break;
@@ -380,6 +384,8 @@ public final class MainActivity extends Activity {
                     case 8: confirmRemoveGame(game); break;
                     case 9: autoConfigure(game); break;
                     case 10: chooseDynarec(game); break;
+                    case 11: prefixMenu(game); break;
+                    case 12: sessionPreflight(game); break;
                 }
             })
             .setNegativeButton("Fechar", null).show();
@@ -473,24 +479,149 @@ public final class MainActivity extends Activity {
     }
 
     private void chooseWine(Game game) {
-        List<RuntimeStore.Installed> local = runtimes.all();
         ArrayList<String> labels = new ArrayList<>();
-        ArrayList<String> tags = new ArrayList<>();
-        labels.add("Automático (quando houver motor)");
-        tags.add("");
-        for (RuntimeStore.Installed entry : local) {
-            if (!WinePackageInstaller.installed(this, entry)) continue;
-            labels.add(entry.tag + " (arquivos extraídos)");
-            tags.add(entry.tag);
+        ArrayList<String> keys = new ArrayList<>();
+        labels.add("Automático (sem runtime selecionado)");
+        keys.add("");
+        for(BionicRelease version:BionicArchiveStore.saved(this)){
+            if(!BionicWineInstaller.installed(this,version))continue;
+            labels.add("Android Bionic · "+version.tag+" · "+version.arch);
+            keys.add(GameRuntimeChoice.bionic(version.tag,version.arch));
         }
-        new AlertDialog.Builder(this).setTitle("Wine preferido")
+        for(RuntimeStore.Installed version:runtimes.all()){
+            if(!WinePackageInstaller.installed(this,version))continue;
+            labels.add("Linux/glibc (não executável no Android Bionic) · "+version.tag);
+            keys.add(version.tag);
+        }
+        new AlertDialog.Builder(this).setTitle("Wine preferido · "+game.title)
             .setSingleChoiceItems(labels.toArray(new String[0]),
-                Math.max(0, tags.indexOf(game.runtimeTag)), (d, selected) -> {
-                    game.runtimeTag = tags.get(selected);
+                Math.max(0,keys.indexOf(game.runtimeTag)),(d,index)->{
+                    game.runtimeTag=keys.get(index);
                     saveGame(game);
                     d.dismiss();
                 })
-            .setNegativeButton("Cancelar", null).show();
+            .setNegativeButton("Cancelar",null).show();
+    }
+
+    private BionicRelease selectedBionic(Game game) {
+        GameRuntimeChoice choice=GameRuntimeChoice.fromStored(game.runtimeTag);
+        if(choice.kind!=GameRuntimeChoice.Kind.BIONIC)return null;
+        for(BionicRelease entry:BionicArchiveStore.saved(this)){
+            if(entry.tag.equals(choice.tag) && entry.arch.equals(choice.arch)
+                && BionicWineInstaller.installed(this,entry))return entry;
+        }
+        return null;
+    }
+
+    private void prefixMenu(Game game) {
+        BionicRelease version=selectedBionic(game);
+        if(version==null){
+            message("Selecione Wine Android/Bionic","Abra as opções deste jogo e "
+                +"selecione uma versão Bionic que já esteja preparada em Runtimes. "
+                +"Wine Linux/glibc não pode criar um prefixo Android Bionic.");
+            return;
+        }
+        if(WinePrefixManager.templateReady(this,game,version)){
+            new AlertDialog.Builder(this).setTitle("Prefixo · "+game.title)
+                .setMessage(WinePrefixManager.status(this,game,version)
+                    +"\n\nA pasta Windows foi preparada a partir do template "
+                    +"do pacote WCP. Ainda faltam wineboot, janelas, áudio "
+                    +"e integração de controles para iniciar jogos.")
+                .setNegativeButton("Fechar",null)
+                .setPositiveButton("Remover prefixo",(d,w)->confirmRemovePrefix(game)).show();
+        }else{
+            new AlertDialog.Builder(this).setTitle("Criar prefixo isolado?")
+                .setMessage("Será descompactado prefixPack.txz de "+version.tag
+                    +" num diretório privado deste jogo. Nenhum binário será "
+                    +"executado e o arquivo EXE original não será alterado. "
+                    +"Essa operação usa armazenamento interno e pode levar espaço.")
+                .setNegativeButton("Cancelar",null)
+                .setPositiveButton("Preparar",(d,w)->prepareGamePrefix(game,version)).show();
+        }
+    }
+
+    private void prepareGamePrefix(Game game,BionicRelease version) {
+        if(busy){message("Operação ativa","Finalize o download ou extração anterior.");return;}
+        busy=true;cancelling.set(false);
+        ProgressDialog dialog=new ProgressDialog(this);
+        dialog.setTitle("Preparando prefixo de "+game.title);
+        dialog.setMessage("Validando arquivos Wine...");
+        dialog.setIndeterminate(true);
+        dialog.setCancelable(false);
+        dialog.setButton(ProgressDialog.BUTTON_NEGATIVE,"Cancelar",
+            (d,which)->cancelling.set(true));
+        dialog.show();
+        worker.execute(()->{
+            try{
+                WinePrefixManager.prepare(getApplicationContext(),game,version,cancelling,
+                    count->runOnUiThread(()->{
+                        if(!isDestroyed()&&!isFinishing())
+                            dialog.setMessage("Extraindo template... "+count+" arquivos");
+                    }));
+                runOnUiThread(()->{
+                    busy=false;dialog.dismiss();
+                    if(isFinishing()||isDestroyed())return;
+                    draw();
+                    message("Prefixo preparado",WinePrefixManager.status(this,game,version)
+                        +"\nNenhum executável Windows foi iniciado.");
+                });
+            }catch(Exception failure){
+                runOnUiThread(()->{
+                    busy=false;dialog.dismiss();
+                    if(isFinishing()||isDestroyed())return;
+                    message("Falha ao preparar prefixo",errorText(failure));
+                });
+            }
+        });
+    }
+
+    private void confirmRemovePrefix(Game game) {
+        if(busy){message("Operação ativa","Finalize a operação anterior.");return;}
+        new AlertDialog.Builder(this).setTitle("Apagar dados Windows de "+game.title+"?")
+            .setMessage("Exclui somente a pasta Wineprefix privada deste jogo. "
+                +"Configs e saves dentro dela podem ser perdidos. "
+                +"O executável original e a biblioteca serão preservados.")
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton("Apagar dados",(d,w)->{
+                busy=true;
+                worker.execute(()->{
+                    Exception err=null;
+                    try{WinePrefixManager.remove(getApplicationContext(),game);}
+                    catch(Exception e){err=e;}
+                    final Exception failure=err;
+                    runOnUiThread(()->{
+                        busy=false;
+                        if(isDestroyed()||isFinishing())return;
+                        if(failure!=null)message("Remoção não concluída",errorText(failure));
+                        else message("Prefixo removido","Os arquivos Windows privados foram apagados.");
+                    });
+                });
+            }).show();
+    }
+
+    private void sessionPreflight(Game game) {
+        BionicRelease wine=selectedBionic(game);
+        if(wine==null){
+            message("Pré-verificação da sessão","Nenhum Wine Android/Bionic válido foi selecionado. "
+                +"Escolha um pacote Bionic preparado nas opções do jogo.\n\n"
+                +EngineGate.reason(this,game));
+            return;
+        }
+        boolean template=WinePrefixManager.templateReady(this,game,wine);
+        BionicSessionPlan.Translator translator="FEX".equals(game.backend)
+            ?BionicSessionPlan.Translator.FEX:BionicSessionPlan.Translator.BOX64;
+        // A GPU Vulkan observada não equivale a um backend gráfico Win32.
+        BionicSessionPlan report=BionicSessionPlan.evaluate(translator,
+            BionicSessionPlan.Graphics.OPENGL,wine.arch,game.architecture,
+            false,false,"BOX64".equals(game.backend)&&Box64Smoke.bundled(this),
+            BionicWineInstaller.installed(this,wine),
+            false,false,false,false,false,false);
+        message("Pré-verificação · "+game.title,
+            "Wine: "+wine.tag+" / "+wine.arch
+            +"\nTemplate prefixo: "+(template?"preparado":"ausente")
+            +"\nWineboot: NÃO validado"
+            +"\n\n"+report.diagnostic()
+            +"\n\nSem X11 e pontes Windows, jogar permanece indisponível.");
     }
 
     private void checkGameAccess(Game game) {
