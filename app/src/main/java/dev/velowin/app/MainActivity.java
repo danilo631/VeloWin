@@ -348,15 +348,90 @@ public final class MainActivity extends Activity {
     private void gameMenu(Game game) {
         new AlertDialog.Builder(this).setTitle(game.title)
             .setItems(new String[]{"Informações e jogar", "Configurar tradutor",
-                "Configurar Vulkan", "Remover da biblioteca"}, (d, which) -> {
+                "Configurar Vulkan", "Selecionar pacote Wine", "Renomear jogo",
+                "Anotações", game.favorite ? "Remover dos favoritos" : "Adicionar aos favoritos",
+                "Verificar acesso ao arquivo", "Remover da biblioteca"}, (d, which) -> {
                 switch (which) {
                     case 0: message("Motor não disponível", EngineGate.reason(this, game)); break;
                     case 1: chooseBackend(game); break;
                     case 2: chooseGraphics(game); break;
-                    case 3: confirmRemoveGame(game); break;
+                    case 3: chooseWine(game); break;
+                    case 4: editGameText(game, false); break;
+                    case 5: editGameText(game, true); break;
+                    case 6:
+                        game.favorite = !game.favorite;
+                        saveGame(game);
+                        break;
+                    case 7: checkGameAccess(game); break;
+                    case 8: confirmRemoveGame(game); break;
                 }
             })
             .setNegativeButton("Fechar", null).show();
+    }
+
+    private void saveGame(Game game) {
+        try { games.put(game); draw(); }
+        catch (IOException error) { message("Falha", errorText(error)); }
+    }
+
+    private void editGameText(Game game, boolean notes) {
+        EditText input = new EditText(this);
+        input.setSingleLine(!notes);
+        input.setText(notes ? game.notes : game.title);
+        input.setSelectAllOnFocus(!notes);
+        LinearLayout holder = vertical();
+        holder.setPadding(dp(20), dp(8), dp(20), dp(2));
+        holder.addView(input);
+        new AlertDialog.Builder(this).setTitle(notes ? "Anotações do jogo" : "Renomear jogo")
+            .setView(holder).setNegativeButton("Cancelar", null)
+            .setPositiveButton("Salvar", (d, w) -> {
+                String text = input.getText().toString().trim();
+                if (text.length() > (notes ? 1500 : 100))
+                    text = text.substring(0, notes ? 1500 : 100);
+                if (!notes && text.isEmpty()) {
+                    message("Nome inválido", "O título não pode ficar vazio.");
+                    return;
+                }
+                if (notes) game.notes = text; else game.title = text;
+                saveGame(game);
+            }).show();
+    }
+
+    private void chooseWine(Game game) {
+        List<RuntimeStore.Installed> local = runtimes.all();
+        ArrayList<String> labels = new ArrayList<>();
+        ArrayList<String> tags = new ArrayList<>();
+        labels.add("Automático (quando houver motor)");
+        tags.add("");
+        for (RuntimeStore.Installed entry : local) {
+            if (!WinePackageInstaller.installed(this, entry)) continue;
+            labels.add(entry.tag + " (arquivos extraídos)");
+            tags.add(entry.tag);
+        }
+        new AlertDialog.Builder(this).setTitle("Wine preferido")
+            .setSingleChoiceItems(labels.toArray(new String[0]),
+                Math.max(0, tags.indexOf(game.runtimeTag)), (d, selected) -> {
+                    game.runtimeTag = tags.get(selected);
+                    saveGame(game);
+                    d.dismiss();
+                })
+            .setNegativeButton("Cancelar", null).show();
+    }
+
+    private void checkGameAccess(Game game) {
+        worker.execute(() -> {
+            String result;
+            try (java.io.InputStream in = getContentResolver().openInputStream(Uri.parse(game.uri))) {
+                String arch = PeInspector.inspect(in);
+                result = "Acesso de leitura ativo. Arquitetura PE: " + arch;
+            }
+            catch (Exception error) {
+                result = "Arquivo não disponível: " + errorText(error)
+                    + ". Adicione novamente pelo seletor de arquivos.";
+            }
+            final String details = result;
+            runOnUiThread(() -> { if (!isDestroyed()) message("Verificação do jogo", details); });
+        });
     }
 
     private void chooseBackend(Game game) {
