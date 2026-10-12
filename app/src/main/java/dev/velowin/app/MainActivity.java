@@ -579,6 +579,7 @@ public final class MainActivity extends Activity {
                     busy = false;
                     dialog.dismiss();
                     if (!isDestroyed() && !isFinishing()) {
+                        runtimes = new RuntimeStore(getApplicationContext());
                         draw();
                         message("Download verificado", "SHA-256 confirmado. "
                             + "Toque em Preparar arquivos Wine para extrair com segurança. "
