@@ -48,6 +48,7 @@ public final class WineVersionSmoke {
                 workspace,env,9000,new AtomicBoolean(false));
             return "Wine Bionic + Box64 --version (somente diagnóstico):\n"
                 +result.summary()
+                +"\n\nDiagnóstico: "+FailureClassifier.explain(result.output,result.code,result.timeout)
                 +"\n\n"+Box64Tuning.explanation(preset)
                 +"\nEste resultado não testa wineboot, DXVK, jogo nem som.";
         }catch(Exception error) {

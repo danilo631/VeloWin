@@ -36,6 +36,7 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/SmartProfile.java \
             app/src/main/java/dev/velowin/app/engine/Box64Tuning.java \
             app/src/main/java/dev/velowin/app/engine/BoundedProcess.java \
+            app/src/main/java/dev/velowin/app/engine/FailureClassifier.java \
             app/src/main/java/dev/velowin/app/engine/EngineReadiness.java \
             app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
             tests/ReleasePolicyTest.java \
@@ -46,6 +47,7 @@ jobs:
             tests/SmartProfileTest.java \
             tests/Box64TuningTest.java \
             tests/BoundedProcessTest.java \
+            tests/FailureClassifierTest.java \
             tests/EngineReadinessTest.java \
             tests/BionicReleasePolicyTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
@@ -56,6 +58,7 @@ jobs:
           java -ea -cp /tmp/velowin-tests SmartProfileTest
           java -ea -cp /tmp/velowin-tests Box64TuningTest
           java -ea -cp /tmp/velowin-tests BoundedProcessTest
+          java -ea -cp /tmp/velowin-tests FailureClassifierTest
           java -ea -cp /tmp/velowin-tests EngineReadinessTest
           java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
       - name: Static Android source contracts

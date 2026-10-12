@@ -25,6 +25,7 @@ public final class Box64Smoke {
                 Box64Tuning.environment(Box64Tuning.Preset.BALANCED),6000,
                 new AtomicBoolean(false));
             return "Box64 Bionic -v\n"+result.summary()
+                +"\nDiagnóstico: "+FailureClassifier.explain(result.output,result.code,result.timeout)
                 +"\nEste teste não inicia Wine ou um jogo.";
         } catch (Exception failure) {
             return "Falha no autoteste Box64: "+failure.getClass().getSimpleName()
