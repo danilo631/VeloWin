@@ -29,6 +29,7 @@ import dev.velowin.app.hardware.NativeCapabilities;
 import dev.velowin.app.hardware.InputAudioLabActivity;
 import dev.velowin.app.engine.BionicWorkspace;
 import dev.velowin.app.engine.RuntimeStrategy;
+import dev.velowin.app.engine.Box64Smoke;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -357,7 +358,8 @@ public final class MainActivity extends Activity {
             .setItems(new String[]{"Informações e jogar", "Configurar tradutor",
                 "Configurar Vulkan", "Selecionar pacote Wine", "Renomear jogo",
                 "Anotações", game.favorite ? "Remover dos favoritos" : "Adicionar aos favoritos",
-                "Verificar acesso ao arquivo", "Remover da biblioteca"}, (d, which) -> {
+                "Verificar acesso ao arquivo", "Remover da biblioteca",
+                "Aplicar configuração automática"}, (d, which) -> {
                 switch (which) {
                     case 0: message("Motor não disponível", EngineGate.reason(this, game)); break;
                     case 1: chooseBackend(game); break;
@@ -371,9 +373,21 @@ public final class MainActivity extends Activity {
                         break;
                     case 7: checkGameAccess(game); break;
                     case 8: confirmRemoveGame(game); break;
+                    case 9: autoConfigure(game); break;
                 }
             })
             .setNegativeButton("Fechar", null).show();
+    }
+
+    private void autoConfigure(Game game) {
+        // Favor Bionic conservative defaults; never promise native game compatibility.
+        RuntimeStrategy.Selection selected=RuntimeStrategy.recommend(game.architecture,false);
+        game.backend=selected.translator==RuntimeStrategy.Translator.BOX64?"BOX64":"FEX";
+        game.graphics="SYSTEM";
+        saveGame(game);
+        message("Configuração automática",selected.explanation
+            + "\nVulkan do sistema foi escolhido, sem alterar o driver da GPU. "
+            + "O motor nativo ainda não está habilitado.");
     }
 
     private void saveGame(Game game) {
@@ -845,7 +859,22 @@ public final class MainActivity extends Activity {
             + "bibliotecas do sistema. A disponibilidade real de Vulkan precisa "
             + "ser testada com um motor carregado.", 13, MUTED, false, 0);
         action(note, "Testar áudio, toque e controle", () -> startActivity(new Intent(this, InputAudioLabActivity.class)), true);
+        action(note, "Testar Box64 Bionic (experimental)", this::testBox64, false);
         action(note, "Compartilhar diagnóstico do dispositivo", this::shareDiagnostics, false);
+    }
+
+    private void testBox64() {
+        if(busy){message("Teste em andamento","Outra operação está ativa.");return;}
+        busy=true;
+        worker.execute(()->{
+            String output=Box64Smoke.inspect(getApplicationContext());
+            runOnUiThread(()->{
+                busy=false;
+                if(!isDestroyed()&&!isFinishing())
+                    message("Autoteste Box64 Android",output
+                        + "\n\nEste teste não verifica execução de Wine ou de jogos.");
+            });
+        });
     }
 
     private void shareDiagnostics() {
@@ -860,6 +889,7 @@ public final class MainActivity extends Activity {
                 + "\nPolítica GPU: " + info.recommendation
                 + "\n" + dev.velowin.app.hardware.DeviceHealth.snapshot(getApplicationContext())
                 + "\nVulkan JNI: " + NativeCapabilities.inspectVulkan()
+                + "\nBox64 Bionic empacotado: " + Box64Smoke.bundled(this)
                 + "\nBionic: " + BionicWorkspace.status(this)
                 + "\nWine preparado: " + countPreparedWine()
                 + "\nMotor Windows: NÃO integrado";
