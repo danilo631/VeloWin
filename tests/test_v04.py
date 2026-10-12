@@ -8,7 +8,7 @@ JAVA=ROOT/"app/src/main/java/dev/velowin/app"
 class GameSessionV04Contracts(unittest.TestCase):
     def test_version_and_profiles(self):
         app=(ROOT/"app/build.gradle").read_text()
-        match=re.search(r"versionName '(\\d+)\\.(\\d+)\\.(\\d+)-dev'",app)
+        match=re.search(r"versionName '([0-9]+)\.([0-9]+)\.([0-9]+)-dev'",app)
         self.assertIsNotNone(match)
         version=tuple(int(part) for part in match.groups())
         self.assertGreaterEqual(version,(0,4,0))
