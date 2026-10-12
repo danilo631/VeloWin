@@ -38,6 +38,7 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/BoundedProcess.java \
             app/src/main/java/dev/velowin/app/engine/FailureClassifier.java \
             app/src/main/java/dev/velowin/app/engine/EngineReadiness.java \
+            app/src/main/java/dev/velowin/app/engine/BionicSessionPlan.java \
             app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
             tests/ReleasePolicyTest.java \
             tests/ArchiveSafetyTest.java \
@@ -49,6 +50,7 @@ jobs:
             tests/BoundedProcessTest.java \
             tests/FailureClassifierTest.java \
             tests/EngineReadinessTest.java \
+            tests/BionicSessionPlanTest.java \
             tests/BionicReleasePolicyTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
           java -ea -cp /tmp/velowin-tests ArchiveSafetyTest
@@ -60,6 +62,7 @@ jobs:
           java -ea -cp /tmp/velowin-tests BoundedProcessTest
           java -ea -cp /tmp/velowin-tests FailureClassifierTest
           java -ea -cp /tmp/velowin-tests EngineReadinessTest
+          java -ea -cp /tmp/velowin-tests BionicSessionPlanTest
           java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
       - name: Static Android source contracts
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
