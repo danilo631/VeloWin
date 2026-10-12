@@ -44,6 +44,7 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/PrefixArchivePath.java \
             app/src/main/java/dev/velowin/app/engine/GameSessionConfig.java \
             app/src/main/java/dev/velowin/app/engine/ControllerState.java \
+            app/src/main/java/dev/velowin/app/hardware/GpuDriverPolicy.java \
             app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
             tests/ReleasePolicyTest.java \
             tests/ArchiveSafetyTest.java \
@@ -61,6 +62,7 @@ jobs:
             tests/PrefixArchivePathTest.java \
             tests/GameSessionConfigTest.java \
             tests/ControllerStateTest.java \
+            tests/GpuDriverPolicyTest.java \
             tests/BionicReleasePolicyTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
           java -ea -cp /tmp/velowin-tests ArchiveSafetyTest
@@ -78,6 +80,7 @@ jobs:
           java -ea -cp /tmp/velowin-tests PrefixArchivePathTest
           java -ea -cp /tmp/velowin-tests GameSessionConfigTest
           java -ea -cp /tmp/velowin-tests ControllerStateTest
+          java -ea -cp /tmp/velowin-tests GpuDriverPolicyTest
           java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
       - name: Static Android source contracts
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
