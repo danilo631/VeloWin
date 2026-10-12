@@ -30,6 +30,7 @@ import dev.velowin.app.hardware.NativeCapabilities;
 import dev.velowin.app.hardware.InputAudioLabActivity;
 import dev.velowin.app.hardware.GpuSurfaceLabActivity;
 import dev.velowin.app.hardware.VulkanWsiLabActivity;
+import dev.velowin.app.hardware.VirtualControllerLabActivity;
 import dev.velowin.app.engine.BionicWorkspace;
 import dev.velowin.app.engine.RuntimeStrategy;
 import dev.velowin.app.engine.Box64Smoke;
@@ -1362,6 +1363,8 @@ public final class MainActivity extends Activity {
         action(note, "Testar Surface OpenGL e FPS", () -> startActivity(new Intent(this, GpuSurfaceLabActivity.class)), false);
         action(note, "Testar apresentação Vulkan nativa (WSI)",
             () -> startActivity(new Intent(this, VulkanWsiLabActivity.class)), false);
+        action(note, "Testar controles virtuais e gamepad",
+            () -> startActivity(new Intent(this, VirtualControllerLabActivity.class)), false);
         action(note, "Testar Box64 Bionic (experimental)", this::testBox64, false);
         action(note, "Compartilhar diagnóstico do dispositivo", this::shareDiagnostics, false);
     }

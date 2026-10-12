@@ -43,6 +43,7 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/PrefixLinkPolicy.java \
             app/src/main/java/dev/velowin/app/engine/PrefixArchivePath.java \
             app/src/main/java/dev/velowin/app/engine/GameSessionConfig.java \
+            app/src/main/java/dev/velowin/app/engine/ControllerState.java \
             app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
             tests/ReleasePolicyTest.java \
             tests/ArchiveSafetyTest.java \
@@ -59,6 +60,7 @@ jobs:
             tests/PrefixLinkPolicyTest.java \
             tests/PrefixArchivePathTest.java \
             tests/GameSessionConfigTest.java \
+            tests/ControllerStateTest.java \
             tests/BionicReleasePolicyTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
           java -ea -cp /tmp/velowin-tests ArchiveSafetyTest
@@ -75,6 +77,7 @@ jobs:
           java -ea -cp /tmp/velowin-tests PrefixLinkPolicyTest
           java -ea -cp /tmp/velowin-tests PrefixArchivePathTest
           java -ea -cp /tmp/velowin-tests GameSessionConfigTest
+          java -ea -cp /tmp/velowin-tests ControllerStateTest
           java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
       - name: Static Android source contracts
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
@@ -104,7 +107,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: velowin-v04-debug
+          name: velowin-v05-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
