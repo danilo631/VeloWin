@@ -13,6 +13,15 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.widget.EditText;
+import android.widget.CheckBox;
+import android.app.ActivityManager;
+import android.os.Build;
+import android.os.PowerManager;
+import dev.velowin.app.library.PeInspector;
+import dev.velowin.app.runtime.WinePackageInstaller;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -55,6 +64,8 @@ public final class MainActivity extends Activity {
     private LinearLayout content;
     private int tab = 0;
     private volatile boolean busy = false;
+    private boolean favoritesOnly = false;
+    private String gameFilter = "";
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -198,6 +209,25 @@ public final class MainActivity extends Activity {
         add(head, "Adicione o executável .exe pelo seletor seguro do Android. "
             + "O VeloWin guarda o acesso ao arquivo, sem copiar sua coleção.", 13, MUTED, false, 6);
         action(head, "+ Adicionar jogo", this::pickGame, true);
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setTextColor(WHITE);
+        search.setHintTextColor(MUTED);
+        search.setTextSize(14);
+        search.setHint("Buscar jogos...");
+        search.setText(gameFilter);
+        search.setPadding(dp(12), dp(12), dp(12), dp(12));
+        search.setBackground(rounded(STROKE, 0, 10));
+        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(-1, -2);
+        searchParams.topMargin = dp(12);
+        head.addView(search, searchParams);
+        CheckBox favorites = new CheckBox(this);
+        favorites.setText("Mostrar apenas favoritos");
+        favorites.setTextSize(13);
+        favorites.setTextColor(MUTED);
+        favorites.setButtonTintList(ColorStateList.valueOf(ACCENT));
+        favorites.setChecked(favoritesOnly);
+        head.addView(favorites);
 
         if (games.isDamaged()) {
             LinearLayout error = card();
@@ -214,17 +244,46 @@ public final class MainActivity extends Activity {
             add(empty, "Os jogos aparecerão aqui com seu perfil e diagnóstico de execução.",
                 13, MUTED, false, 0);
         }
+        final ArrayList<LinearLayout> renderedCards = new ArrayList<>();
+        final ArrayList<Game> renderedGames = new ArrayList<>();
         for (Game game : all) {
             LinearLayout item = card();
-            add(item, game.title, 17, WHITE, true, 5);
-            add(item, "CPU: " + game.backend + "   •   Vulkan: " + game.graphics,
+            renderedCards.add(item);
+            renderedGames.add(game);
+            add(item, (game.favorite ? "★  " : "") + game.title, 17, WHITE, true, 5);
+            add(item, "PE " + game.architecture + "   •   CPU: " + game.backend
+                + "\nVulkan: " + game.graphics + (game.runtimeTag.isEmpty() ? "" : "   •   Wine: " + game.runtimeTag),
                 12, MUTED, false, 0);
             action(item, "Abrir opções", () -> gameMenu(game), false);
         }
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence t, int a, int c, int z) {}
+            @Override public void onTextChanged(CharSequence t, int start, int before, int count) {
+                gameFilter = t.toString();
+                filterGames(renderedCards, renderedGames);
+            }
+            @Override public void afterTextChanged(Editable t) {}
+        });
+        favorites.setOnCheckedChangeListener((button, checked) -> {
+            favoritesOnly = checked;
+            filterGames(renderedCards, renderedGames);
+        });
+        filterGames(renderedCards, renderedGames);
         LinearLayout note = card();
         add(note, "Execução de jogos", 15, WHITE, true, 6);
         add(note, EngineGate.reason(this, all.isEmpty() ? null : all.get(0)),
             12, MUTED, false, 0);
+    }
+
+    private void filterGames(List<LinearLayout> cards, List<Game> titles) {
+        String query = gameFilter.toLowerCase(Locale.ROOT).trim();
+        for (int i = 0; i < cards.size(); i++) {
+            Game g = titles.get(i);
+            boolean match = (!favoritesOnly || g.favorite)
+                && (query.isEmpty() || g.title.toLowerCase(Locale.ROOT).contains(query)
+                    || g.architecture.toLowerCase(Locale.ROOT).contains(query));
+            cards.get(i).setVisibility(match ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void pickGame() {
