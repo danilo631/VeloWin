@@ -14,6 +14,8 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/VeloWinTheme"
         android:supportsRtl="true">
+        <activity android:name=".ContainerLabActivity" android:exported="false"
+            android:screenOrientation="unspecified"/>
         <activity android:name=".hardware.VirtualControllerLabActivity"
             android:exported="false" android:screenOrientation="unspecified"/>
         <activity android:name=".hardware.VulkanWsiLabActivity"
