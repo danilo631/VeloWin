@@ -2,7 +2,7 @@ name: VeloWin Android
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -29,8 +29,17 @@ jobs:
           mkdir -p /tmp/velowin-tests
           javac -encoding UTF-8 -d /tmp/velowin-tests \
             app/src/main/java/dev/velowin/app/runtime/ReleasePolicy.java \
-            tests/ReleasePolicyTest.java
+            app/src/main/java/dev/velowin/app/runtime/ArchiveSafety.java \
+            app/src/main/java/dev/velowin/app/runtime/ElfVerifier.java \
+            app/src/main/java/dev/velowin/app/library/PeInspector.java \
+            tests/ReleasePolicyTest.java \
+            tests/ArchiveSafetyTest.java \
+            tests/ElfVerifierTest.java \
+            tests/PeInspectorTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
+          java -ea -cp /tmp/velowin-tests ArchiveSafetyTest
+          java -ea -cp /tmp/velowin-tests ElfVerifierTest
+          java -ea -cp /tmp/velowin-tests PeInspectorTest
       - name: Static Android source contracts
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
 
@@ -59,7 +68,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: velowin-debug
+          name: velowin-v02-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
