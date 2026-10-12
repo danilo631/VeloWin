@@ -4,69 +4,55 @@ import android.content.Context;
 import dev.velowin.app.runtime.BionicRelease;
 import dev.velowin.app.runtime.BionicWineInstaller;
 import java.io.File;
-import java.io.InputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Explicit, bounded diagnostic: try only Wine --version, never an arbitrary EXE.
- * Needs experimental APK's packaged Bionic Box64 and a SHA-verified WCP install.
+ * Short manual smoke test: Box64 -> verified Bionic Wine --version.
+ * No wineboot, prefix creation, shell, arbitrary EXE, X server or games.
  */
 public final class WineVersionSmoke {
     private WineVersionSmoke() {}
 
     public static String run(Context context,BionicRelease release) {
-        if(release==null||!"x86_64".equals(release.arch))
-            return "Apenas Wine x86_64 Bionic é suportado no autoteste Box64.";
-        if(!Box64Smoke.bundled(context))
-            return "Este APK não inclui Box64. Use o APK experimental Box64.";
-        if(!BionicWineInstaller.installed(context,release))
-            return "O Wine Bionic não está preparado/validado.";
-        Process process=null;
-        try {
-            File home=BionicWorkspace.prepare(context);
-            File wineDir=BionicWineInstaller.folder(context,release);
-            File executable=new File(wineDir,"bin/wine").getCanonicalFile();
-            if(!executable.getPath().startsWith(wineDir.getCanonicalPath()+File.separator))
-                return "Execução Wine bloqueada: binário saiu do diretório confiável.";
-            File translator=new File(context.getApplicationInfo().nativeLibraryDir,"libvelobox64.so");
-            ProcessBuilder pb=new ProcessBuilder(translator.getAbsolutePath(),
-                executable.getAbsolutePath(),"--version");
-            pb.directory(home);
-            pb.redirectErrorStream(true);
-            pb.environment().remove("LD_PRELOAD");
-            pb.environment().put("HOME",new File(home,"home").getAbsolutePath());
-            pb.environment().put("TMPDIR",new File(home,"tmp").getAbsolutePath());
-            pb.environment().put("BOX64_NOBANNER","1");
-            pb.environment().put("WINEDEBUG","-all");
-            pb.environment().put("BOX64_LD_LIBRARY_PATH",
-                new File(wineDir,"lib/wine/x86_64-unix").getAbsolutePath()
-                +":"+new File(wineDir,"lib").getAbsolutePath());
-            process=pb.start();
-            if(!process.waitFor(9,TimeUnit.SECONDS)){
-                process.destroyForcibly();
-                return "Wine --version excedeu 9s. Processo encerrado; dependências precisam de revisão.";
-            }
-            return "Wine Bionic via Box64 terminou com código "+process.exitValue()
-                +"\n"+limited(process.getInputStream())
-                +"\nNão é teste de prefixo, display, áudio ou DXVK.";
-        }catch(Exception error){
-            return "Wine/Box64 Bionic não inicializou: "
-                +error.getClass().getSimpleName()+": "+error.getMessage();
-        }finally{
-            if(process!=null && process.isAlive())process.destroyForcibly();
-        }
+        return run(context,release,Box64Tuning.Preset.BALANCED);
     }
 
-    private static String limited(InputStream stream) throws IOException {
-        try(InputStream in=stream;ByteArrayOutputStream out=new ByteArrayOutputStream()){
-            byte[] buf=new byte[512];
-            int n;
-            while(out.size()<3000 && (n=in.read(buf,0,
-                Math.min(buf.length,3000-out.size())))!=-1)
-                out.write(buf,0,n);
-            return out.toString("UTF-8");
+    public static String run(Context context,BionicRelease release,Box64Tuning.Preset preset) {
+        if(release==null||!"x86_64".equals(release.arch))
+            return "Este diagnóstico requer Wine x86_64 Bionic; ARM64EC é outro backend.";
+        if(!Box64Smoke.bundled(context))
+            return "Box64 Bionic ausente. Use APK experimental do GitHub Actions.";
+        if(!BionicWineInstaller.installed(context,release))
+            return "Pacote Wine Bionic não instalado ou validação incompleta.";
+        try {
+            File workspace=BionicWorkspace.prepare(context);
+            File wineRoot=BionicWineInstaller.folder(context,release).getCanonicalFile();
+            File wine=new File(wineRoot,"bin/wine").getCanonicalFile();
+            if(!wine.isFile()||!wine.getPath().startsWith(
+                    wineRoot.getCanonicalPath()+File.separator))
+                return "O binário Wine aponta para fora do diretório instalado.";
+            File box64=new File(context.getApplicationInfo().nativeLibraryDir,
+                "libvelobox64.so").getCanonicalFile();
+            Map<String,String> env=new LinkedHashMap<>(Box64Tuning.environment(preset));
+            env.put("HOME",new File(workspace,"home").getAbsolutePath());
+            env.put("TMPDIR",new File(workspace,"tmp").getAbsolutePath());
+            env.put("WINEDEBUG","-all");
+            env.put("BOX64_LD_LIBRARY_PATH",
+                new File(wineRoot,"lib/wine/x86_64-unix").getAbsolutePath()
+                +":"+new File(wineRoot,"lib").getAbsolutePath());
+            BoundedProcess.Result result=BoundedProcess.run(
+                Arrays.asList(box64.getAbsolutePath(),wine.getAbsolutePath(),"--version"),
+                workspace,env,9000,new AtomicBoolean(false));
+            return "Wine Bionic + Box64 --version (somente diagnóstico):\n"
+                +result.summary()
+                +"\n\n"+Box64Tuning.explanation(preset)
+                +"\nEste resultado não testa wineboot, DXVK, jogo nem som.";
+        }catch(Exception error) {
+            return "Wine/Box64 não inicializou: "+error.getClass().getSimpleName()
+                +": "+error.getMessage();
         }
     }
 }

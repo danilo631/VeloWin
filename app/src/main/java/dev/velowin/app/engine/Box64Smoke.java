@@ -2,58 +2,33 @@ package dev.velowin.app.engine;
 
 import android.content.Context;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ByteArrayOutputStream;
-import java.util.concurrent.TimeUnit;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * A controlled --version probe of optional ARM64 Android/ Bionic Box64 binary.
- * APK without the experimental native artifact intentionally reports missing.
- * Never spawns Wine, Windows EXE, root or a shell.
- */
+/** Opt-in bounded -v probe of the pinned Bionic ARM64 Box64 binary only. */
 public final class Box64Smoke {
     private Box64Smoke() {}
-    private static File executable(Context ctx) {
-        return new File(ctx.getApplicationInfo().nativeLibraryDir,"libvelobox64.so");
+    private static File executable(Context context) {
+        return new File(context.getApplicationInfo().nativeLibraryDir, "libvelobox64.so");
     }
-    public static boolean bundled(Context ctx) {
-        File b=executable(ctx);
-        return b.isFile() && b.canExecute() && b.length()>1024*1024;
+    public static boolean bundled(Context context) {
+        File file=executable(context);
+        return file.isFile() && file.canExecute() && file.length()>1024*1024;
     }
-    public static String inspect(Context ctx) {
-        File b=executable(ctx);
-        if(!bundled(ctx))return "Box64 Bionic não incluído neste APK. "
-            +"Use o workflow experimental para compilar o tradutor ARM64.";
-        Process process=null;
+    public static String inspect(Context context) {
+        if (!bundled(context)) return "Box64 Bionic não incluído neste APK. "
+            +"Instale a versão experimental gerada no GitHub Actions.";
         try {
-            ProcessBuilder builder=new ProcessBuilder(b.getAbsolutePath(),"-v");
-            builder.directory(ctx.getFilesDir());
-            builder.redirectErrorStream(true);
-            builder.environment().put("BOX64_NOBANNER","0");
-            process=builder.start();
-            boolean completed=process.waitFor(6, TimeUnit.SECONDS);
-            if(!completed){
-                process.destroyForcibly();
-                return "Box64: limite de tempo atingido no autoteste.";
-            }
-            String output=limited(process.getInputStream());
-            return "Box64 --version (exit "+process.exitValue()+"):\n"+output;
-        }catch(Exception exception){
-            return "Box64 indisponível: "+exception.getClass().getSimpleName()
-                +": "+exception.getMessage();
-        } finally {
-            if(process!=null && process.isAlive())process.destroyForcibly();
+            File work=BionicWorkspace.prepare(context);
+            BoundedProcess.Result result=BoundedProcess.run(
+                Arrays.asList(executable(context).getAbsolutePath(),"-v"),work,
+                Box64Tuning.environment(Box64Tuning.Preset.BALANCED),6000,
+                new AtomicBoolean(false));
+            return "Box64 Bionic -v\n"+result.summary()
+                +"\nEste teste não inicia Wine ou um jogo.";
+        } catch (Exception failure) {
+            return "Falha no autoteste Box64: "+failure.getClass().getSimpleName()
+                +": "+failure.getMessage();
         }
-    }
-    private static String limited(InputStream in) throws IOException {
-        ByteArrayOutputStream output=new ByteArrayOutputStream();
-        byte[] block=new byte[512];
-        int n;
-        while(output.size()<2048 && (n=in.read(block,0,
-                Math.min(block.length,2048-output.size())))!=-1){
-            output.write(block,0,n);
-        }
-        return output.toString("UTF-8");
     }
 }
