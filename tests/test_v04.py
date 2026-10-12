@@ -20,7 +20,7 @@ class GameSessionV04Contracts(unittest.TestCase):
 
     def test_prefix_pack_cannot_escape_private_workspace(self):
         source=(JAVA/"engine/WinePrefixManager.java").read_text()
-        for contract in ("ArchiveSafety.member","ArchiveSafety.symlinkTarget",
+        for contract in ("PrefixArchivePath.member","PrefixLinkPolicy.decide",
                          "ArchiveSafety.conflicts","Files.move","ATOMIC_MOVE",
                          "WinePackageInstaller.deleteTree(stage)",
                          "MAX_TOTAL","MAX_ENTRIES","LinkOption.NOFOLLOW_LINKS",
