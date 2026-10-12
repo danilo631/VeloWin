@@ -96,6 +96,16 @@ public final class GpuInspector {
         else {
             info.recommendation = "GPU não classificada. Não substituir o driver automaticamente.";
         }
+        if ("Não anunciado".equals(info.vulkan)) {
+            info.recommendation += " Vulkan não anunciado pelo Android; não habilitar DXVK/VKD3D.";
+        }
+        else {
+            String api = info.vulkan;
+            if (api.startsWith("1.0") || api.startsWith("1.1") || api.startsWith("1.2"))
+                info.recommendation += " VKD3D-Proton moderno requer Vulkan 1.3; este nível não foi anunciado.";
+            else
+                info.recommendation += " Vulkan informado pelo Android não garante todas as extensões DXVK/VKD3D.";
+        }
         return info;
     }
 }
