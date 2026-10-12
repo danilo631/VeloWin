@@ -25,6 +25,7 @@ import dev.velowin.app.runtime.WinePackageInstaller;
 import dev.velowin.app.runtime.BionicRelease;
 import dev.velowin.app.runtime.BionicCatalog;
 import dev.velowin.app.runtime.BionicArchiveStore;
+import dev.velowin.app.runtime.BionicWineInstaller;
 import dev.velowin.app.hardware.NativeCapabilities;
 import dev.velowin.app.hardware.InputAudioLabActivity;
 import dev.velowin.app.engine.BionicWorkspace;
@@ -496,6 +497,7 @@ public final class MainActivity extends Activity {
             + "Arquivos WCP são baixados e verificados, mas ainda não são executados. "
             + "Preferir x86-64 + Box64; ARM64EC/FEX requer testes próprios.",13,MUTED,false,5);
         action(bionic, "Buscar Proton Bionic no GitHub", this::findBionicReleases, true);
+        action(bionic, "Limpar extrações Bionic interrompidas", this::cleanBionic, false);
         action(bionic, "Preparar workspace Android", this::prepareWorkspace, false);
         add(bionic, BionicWorkspace.status(this), 12, MUTED, false, 2);
         LinearLayout intro = card();
@@ -678,14 +680,104 @@ public final class MainActivity extends Activity {
     }
 
     private void confirmBionicDownload(BionicRelease entry) {
-        String explained="Fonte: GameNative/proton-wine\nABI: "+entry.arch
+        boolean hasFile=BionicArchiveStore.exists(this,entry);
+        boolean installed=BionicWineInstaller.installed(this,entry);
+        String explanation="Origem GameNative/proton-wine\nABI: "+entry.arch
             +"\nSHA-256: "+entry.digest
-            +"\n\nPacote WCP Android/Bionic, não compatível com o Wine glibc. "
-            +"Será baixado e verificado sem extração ou execução automática.";
-        new AlertDialog.Builder(this).setTitle(entry.toString()).setMessage(explained)
+            +"\n\nWCP Zstandard/TAR, separado do Wine Linux/glibc. "
+            +"Preparar copia apenas arquivos para pasta privada: "
+            +"ainda não inicializa Wineprefix, Box64/FEX, X11 nem DXVK.";
+        AlertDialog.Builder prompt=new AlertDialog.Builder(this)
+            .setTitle(entry.toString()).setMessage(explanation)
+            .setNegativeButton("Cancelar",null);
+        if(installed) {
+            prompt.setPositiveButton("Remover preparação",(d,w)->removeBionicInstallation(entry));
+        }else if(hasFile) {
+            prompt.setPositiveButton("Preparar arquivos Bionic",(d,w)->installBionic(entry));
+            prompt.setNeutralButton("Baixar novamente",(d,w)->downloadBionic(entry));
+        }else prompt.setPositiveButton("Baixar WCP",(d,w)->downloadBionic(entry));
+        prompt.show();
+    }
+
+    private void installBionic(BionicRelease entry) {
+        if(busy){message("Operação em andamento","Conclua a operação atual.");return;}
+        busy=true;cancelling.set(false);
+        ProgressDialog dialog=new ProgressDialog(this);
+        dialog.setTitle("Preparando Wine Bionic");
+        dialog.setMessage("Verificando SHA-256 do WCP e extraindo Zstandard/TAR…");
+        dialog.setIndeterminate(true);
+        dialog.setCancelable(false);
+        dialog.setButton(ProgressDialog.BUTTON_NEGATIVE,"Cancelar",
+            (d,w)->cancelling.set(true));
+        dialog.show();
+        worker.execute(()->{
+            try {
+                BionicWineInstaller.install(getApplicationContext(),entry,cancelling,
+                    processed->runOnUiThread(()->{
+                        if(!isDestroyed()&&!isFinishing())
+                            dialog.setMessage("WCP Bionic: "+processed+" entradas processadas");
+                    }));
+                runOnUiThread(()->{
+                    busy=false;dialog.dismiss();
+                    if(!isDestroyed()&&!isFinishing())
+                        message("Wine Bionic preparado","Arquivos WCP foram extraídos e validados "
+                            +"sem execução. Para iniciar um jogo faltam wineboot/Box64 ou FEX, "
+                            +"display, áudio e ponte Vulkan.");
+                });
+            }catch(Exception error){
+                runOnUiThread(()->{
+                    busy=false;dialog.dismiss();
+                    if(!isDestroyed()&&!isFinishing())
+                        message("Falha na preparação Bionic",errorText(error));
+                });
+            }
+        });
+    }
+
+    private void removeBionicInstallation(BionicRelease entry) {
+        if(busy){message("Operação em andamento","Finalize a operação.");return;}
+        new AlertDialog.Builder(this).setTitle("Remover Wine Bionic extraído?")
+            .setMessage("O WCP baixado será preservado para reimportação.")
             .setNegativeButton("Cancelar",null)
-            .setPositiveButton("Baixar pacote Bionic",(d,w)->downloadBionic(entry))
-            .show();
+            .setPositiveButton("Remover",(d,w)->{
+                busy=true;
+                worker.execute(()->{
+                    Exception fail=null;
+                    try{BionicWineInstaller.uninstall(getApplicationContext(),entry);}
+                    catch(Exception error){fail=error;}
+                    final Exception result=fail;
+                    runOnUiThread(()->{
+                        busy=false;
+                        if(isFinishing()||isDestroyed())return;
+                        if(result!=null)message("Falha",errorText(result));
+                        else message("Preparação removida","Download WCP preservado.");
+                    });
+                });
+            }).show();
+    }
+
+    private void cleanBionic() {
+        if(busy){message("Operação em andamento","Finalize a operação.");return;}
+        new AlertDialog.Builder(this).setTitle("Recuperar espaço Bionic?")
+            .setMessage("Excluir somente pastas temporárias de extrações interrompidas.")
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton("Limpar",(d,w)->{
+                busy=true;
+                worker.execute(()->{
+                    Exception fail=null;
+                    int count=0;
+                    try{count=BionicWineInstaller.cleanupUnfinished(getApplicationContext());}
+                    catch(Exception error){fail=error;}
+                    final Exception result=fail;
+                    final int removed=count;
+                    runOnUiThread(()->{
+                        busy=false;
+                        if(isFinishing()||isDestroyed())return;
+                        message(result==null?"Recuperação Bionic":"Falha",
+                            result==null?removed+" pasta(s) temporária(s) removidas.":errorText(result));
+                    });
+                });
+            }).show();
     }
 
     private void downloadBionic(BionicRelease entry) {
@@ -708,9 +800,13 @@ public final class MainActivity extends Activity {
                 runOnUiThread(()->{
                     busy=false;dialog.dismiss();
                     if(!isDestroyed()&&!isFinishing())
-                        message("Pacote Bionic verificado","Download SHA-256 concluído: "
-                            +entry.name+". A ativação de Wine requer extração WCP "
-                            +"segura, Box64/FEX, inicialização e integração de display/áudio.");
+                        new AlertDialog.Builder(this).setTitle("WCP Bionic verificado")
+                            .setMessage("SHA-256 confirmado para "+entry.name
+                                +". Deseja extrair os arquivos Wine em pasta isolada? "
+                                +"Nenhum jogo será iniciado.")
+                            .setNegativeButton("Depois",null)
+                            .setPositiveButton("Preparar agora",(d,w)->installBionic(entry))
+                            .show();
                 });
             }catch(Exception failure){
                 runOnUiThread(()->{
