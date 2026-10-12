@@ -5,7 +5,7 @@ import org.json.JSONObject;
 import java.util.UUID;
 
 public final class Game {
-    public String id, title, uri, backend, graphics, architecture, runtimeTag, notes;
+    public String id, title, uri, backend, graphics, architecture, runtimeTag, notes, boxPreset;
     public boolean favorite;
     public long createdAt;
 
@@ -19,6 +19,7 @@ public final class Game {
         this.runtimeTag = "";
         this.notes = "";
         this.favorite = false;
+        this.boxPreset = "BALANCED";
         this.createdAt = System.currentTimeMillis();
     }
 
@@ -30,6 +31,7 @@ public final class Game {
         g.backend = backend; g.graphics = graphics;
         g.architecture = architecture; g.runtimeTag = runtimeTag;
         g.notes = notes; g.favorite = favorite; g.createdAt = createdAt;
+        g.boxPreset = boxPreset;
         return g;
     }
 
@@ -45,6 +47,7 @@ public final class Game {
         game.runtimeTag = json.optString("runtimeTag", "");
         game.notes = json.optString("notes", "");
         game.favorite = json.optBoolean("favorite", false);
+        game.boxPreset = json.optString("boxPreset", "BALANCED");
         return game;
     }
 
@@ -60,6 +63,7 @@ public final class Game {
         out.put("runtimeTag", runtimeTag);
         out.put("notes", notes);
         out.put("favorite", favorite);
+        out.put("boxPreset", boxPreset);
         return out;
     }
 }

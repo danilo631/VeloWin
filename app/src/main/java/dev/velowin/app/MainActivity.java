@@ -31,6 +31,7 @@ import dev.velowin.app.hardware.InputAudioLabActivity;
 import dev.velowin.app.engine.BionicWorkspace;
 import dev.velowin.app.engine.RuntimeStrategy;
 import dev.velowin.app.engine.Box64Smoke;
+import dev.velowin.app.engine.Box64Tuning;
 import dev.velowin.app.engine.WineVersionSmoke;
 import android.view.Gravity;
 import android.view.View;
@@ -262,6 +263,7 @@ public final class MainActivity extends Activity {
             renderedGames.add(game);
             add(item, (game.favorite ? "★  " : "") + game.title, 17, WHITE, true, 5);
             add(item, "PE " + game.architecture + "   •   CPU: " + game.backend
+                + " (" + Box64Tuning.fromGame(game.boxPreset) + ")"
                 + "\nVulkan: " + game.graphics + (game.runtimeTag.isEmpty() ? "" : "   •   Wine: " + game.runtimeTag),
                 12, MUTED, false, 0);
             action(item, "Abrir opções", () -> gameMenu(game), false);
@@ -361,7 +363,7 @@ public final class MainActivity extends Activity {
                 "Configurar Vulkan", "Selecionar pacote Wine", "Renomear jogo",
                 "Anotações", game.favorite ? "Remover dos favoritos" : "Adicionar aos favoritos",
                 "Verificar acesso ao arquivo", "Remover da biblioteca",
-                "Aplicar configuração automática"}, (d, which) -> {
+                "Aplicar configuração automática", "Ajustar Box64 Dynarec"}, (d, which) -> {
                 switch (which) {
                     case 0: message("Motor não disponível", EngineGate.reason(this, game)); break;
                     case 1: chooseBackend(game); break;
@@ -376,9 +378,27 @@ public final class MainActivity extends Activity {
                     case 7: checkGameAccess(game); break;
                     case 8: confirmRemoveGame(game); break;
                     case 9: autoConfigure(game); break;
+                    case 10: chooseDynarec(game); break;
                 }
             })
             .setNegativeButton("Fechar", null).show();
+    }
+
+    private void chooseDynarec(Game game) {
+        String[] options={"Compatibilidade (mais cauteloso)",
+            "Equilibrado (padrão Box64)","Desempenho (blocos maiores)"};
+        Box64Tuning.Preset preset=Box64Tuning.fromGame(game.boxPreset);
+        new AlertDialog.Builder(this).setTitle("Box64 por jogo · "+game.title)
+            .setSingleChoiceItems(options,preset.ordinal(),(dialog,index)->{
+                game.boxPreset=Box64Tuning.Preset.values()[index].name();
+                saveGame(game);
+                dialog.dismiss();
+                message("Box64 · "+game.boxPreset,
+                    Box64Tuning.explanation(Box64Tuning.Preset.values()[index])
+                    +"\nEstas opções serão usadas no motor quando integrado; "
+                    +"não substituem Box64 ou Wine.");
+            })
+            .setNegativeButton("Cancelar",null).show();
     }
 
     private void autoConfigure(Game game) {
@@ -406,6 +426,9 @@ public final class MainActivity extends Activity {
                     if(isDestroyed()||isFinishing())return;
                     game.backend="BOX64";
                     game.graphics=profile.driver;
+                    game.boxPreset=profile.tier==dev.velowin.app.engine.SmartProfile.Tier.COMPATIBILITY
+                        ?"STABILITY":profile.tier==dev.velowin.app.engine.SmartProfile.Tier.PERFORMANCE
+                        ?"PERFORMANCE":"BALANCED";
                     saveGame(game);
                     message("Perfil "+profile.tier,
                         "Tradutor sugerido: "+profile.translator
@@ -689,6 +712,7 @@ public final class MainActivity extends Activity {
                 +"O pacote GameNative é de terceiros e experimental.")
             .setNegativeButton("Cancelar",null)
             .setPositiveButton("Executar teste",(d,w)->{
+                Box64Tuning.Preset preset=Box64Tuning.Preset.BALANCED;
                 busy=true;
                 ProgressDialog working=new ProgressDialog(this);
                 working.setMessage("Executando Wine --version em processo isolado…");
@@ -696,7 +720,7 @@ public final class MainActivity extends Activity {
                 working.setCancelable(false);
                 working.show();
                 worker.execute(()->{
-                    String result=WineVersionSmoke.run(getApplicationContext(),release);
+                    String result=WineVersionSmoke.run(getApplicationContext(),release,preset);
                     runOnUiThread(()->{
                         busy=false;working.dismiss();
                         if(!isDestroyed()&&!isFinishing())
