@@ -1,7 +1,7 @@
 /*
  * Vulkan WSI proof-of-life on an Android Surface. No Windows window server,
- * game renderer, DXVK or VKD3D. It performs read-only swapchain capability checks
- * after creating/destroying a VkSurfaceKHR from the Java SurfaceView.
+ * game renderer, DXVK or VKD3D. Creates and destroys an actual Vulkan swapchain
+ * without drawing or presenting, against an Android SurfaceView.
  */
 #define VK_USE_PLATFORM_ANDROID_KHR 1
 #include <jni.h>
@@ -126,20 +126,112 @@ Java_dev_velowin_app_hardware_VulkanWsiLabActivity_probeSurface(
         VkResult capCode=vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpus[i],surface,&caps);
         VkResult formatCode=vkGetPhysicalDeviceSurfaceFormatsKHR(gpus[i],surface,&formats,NULL);
         VkResult modeCode=vkGetPhysicalDeviceSurfacePresentModesKHR(gpus[i],surface,&modes,NULL);
-        usable=capCode==VK_SUCCESS && formatCode==VK_SUCCESS && modeCode==VK_SUCCESS
-            && hasSwapchain && formats>0 && modes>0;
+        int capsReady=capCode==VK_SUCCESS && formatCode==VK_SUCCESS
+            && modeCode==VK_SUCCESS && hasSwapchain && formats>0 && modes>0;
+        int created=0;
+        int imagesAvailable=0;
+        VkResult creationCode=VK_ERROR_INITIALIZATION_FAILED;
+        if(capsReady && (caps.supportedUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+            float priority=1.0f;
+            VkDeviceQueueCreateInfo queueInfo={0};
+            queueInfo.sType=VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueInfo.queueFamilyIndex=(uint32_t)chosenFamily;
+            queueInfo.queueCount=1;
+            queueInfo.pQueuePriorities=&priority;
+            const char *deviceExt[]={VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+            VkDeviceCreateInfo deviceInfo={0};
+            deviceInfo.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            deviceInfo.queueCreateInfoCount=1;
+            deviceInfo.pQueueCreateInfos=&queueInfo;
+            deviceInfo.enabledExtensionCount=1;
+            deviceInfo.ppEnabledExtensionNames=deviceExt;
+            VkDevice device=VK_NULL_HANDLE;
+            creationCode=vkCreateDevice(gpus[i],&deviceInfo,NULL,&device);
+            if(creationCode==VK_SUCCESS) {
+                VkSurfaceFormatKHR supportedFormats[32];
+                uint32_t countFormats=formats>32?32:formats;
+                VkResult fetchFormat=vkGetPhysicalDeviceSurfaceFormatsKHR(gpus[i],surface,
+                    &countFormats,supportedFormats);
+                if((fetchFormat==VK_SUCCESS || fetchFormat==VK_INCOMPLETE)
+                    && countFormats>0) {
+                    VkExtent2D extent=caps.currentExtent;
+                    if(extent.width==UINT32_MAX) {
+                        int32_t width=ANativeWindow_getWidth(window);
+                        int32_t height=ANativeWindow_getHeight(window);
+                        extent.width=width>0?(uint32_t)width:1u;
+                        extent.height=height>0?(uint32_t)height:1u;
+                        if(extent.width<caps.minImageExtent.width)
+                            extent.width=caps.minImageExtent.width;
+                        if(extent.height<caps.minImageExtent.height)
+                            extent.height=caps.minImageExtent.height;
+                        if(extent.width>caps.maxImageExtent.width)
+                            extent.width=caps.maxImageExtent.width;
+                        if(extent.height>caps.maxImageExtent.height)
+                            extent.height=caps.maxImageExtent.height;
+                    }
+                    uint32_t images=caps.minImageCount+1;
+                    if(caps.maxImageCount && images>caps.maxImageCount)
+                        images=caps.maxImageCount;
+                    VkCompositeAlphaFlagBitsKHR alpha=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+                    const VkCompositeAlphaFlagBitsKHR choices[]={
+                        VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+                        VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+                        VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+                        VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR
+                    };
+                    int supportedAlpha=0;
+                    for(unsigned a=0;a<4;++a) {
+                        if(caps.supportedCompositeAlpha & choices[a]) {
+                            alpha=choices[a];
+                            supportedAlpha=1;
+                            break;
+                        }
+                    }
+                    if(supportedAlpha && extent.width>0 && extent.height>0
+                       && images>=caps.minImageCount) {
+                        VkSwapchainCreateInfoKHR sc={0};
+                        sc.sType=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+                        sc.surface=surface;
+                        sc.minImageCount=images;
+                        sc.imageFormat=supportedFormats[0].format;
+                        sc.imageColorSpace=supportedFormats[0].colorSpace;
+                        sc.imageExtent=extent;
+                        sc.imageArrayLayers=1;
+                        sc.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                        sc.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                        sc.preTransform=caps.currentTransform;
+                        sc.compositeAlpha=alpha;
+                        sc.presentMode=VK_PRESENT_MODE_FIFO_KHR;
+                        sc.clipped=VK_TRUE;
+                        VkSwapchainKHR swapchain=VK_NULL_HANDLE;
+                        creationCode=vkCreateSwapchainKHR(device,&sc,NULL,&swapchain);
+                        if(creationCode==VK_SUCCESS) {
+                            created=1;
+                            uint32_t available=0;
+                            if(vkGetSwapchainImagesKHR(device,swapchain,&available,NULL)
+                                ==VK_SUCCESS && available>0)imagesAvailable=(int)available;
+                            vkDestroySwapchainKHR(device,swapchain,NULL);
+                        }
+                    }
+                }
+                vkDestroyDevice(device,NULL);
+            }
+        }
+        usable=capsReady && created && imagesAvailable>0;
         snprintf(report,sizeof(report),
             "GPU: %.160s\nVulkan WSI: %s\nFila gráfica+present: %d\n"
             "VK_KHR_android_surface: sim\nVK_KHR_swapchain: %s\n"
             "Formatos de superfície: %u\nModos de apresentação: %u\n"
-            "Extent atual: %ux%u\nImagens swapchain: %u–%u\n"
+            "Extent atual: %ux%u\nImagens swapchain: %d\n"
+            "Criação VkSwapchainKHR: %s (VkResult %d)\n"
             "Resultado: %s\n\n"
-            "Teste de superfície, não de swapchain criada, renderização, DXVK ou Wine.",
-            props.deviceName,usable?"capacidade detectada":"requisitos incompletos",
+            "Smoke test real de criação e destruição de swapchain na Surface Android. "
+            "Ainda NÃO apresenta quadros, executa Wine, DXVK ou jogos.",
+            props.deviceName,capsReady?"suporte indicado":"requisitos incompletos",
             chosenFamily,hasSwapchain?"sim":"não",formats,modes,
-            caps.currentExtent.width,caps.currentExtent.height,
-            caps.minImageCount,caps.maxImageCount,
-            usable?"pode avançar para teste de apresentação":"renderização não habilitada");
+            caps.currentExtent.width,caps.currentExtent.height,imagesAvailable,
+            created?"sucesso":"falhou",(int)creationCode,
+            usable?"swapchain criada e destruída":"driver/WSI ainda não validado");
     }
     if (!usable) {
         snprintf(report,sizeof(report),
