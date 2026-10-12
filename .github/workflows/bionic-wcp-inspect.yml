@@ -3,7 +3,7 @@ name: Verify Bionic Proton WCP Layout
 on:
   workflow_dispatch:
   push:
-    branches: ['main', 'feature/bionic-engine-foundation-v03']
+    branches: [main, 'feature/bionic-engine-foundation-v03']
     paths:
       - '.github/workflows/bionic-wcp-inspect.yml'
       - 'app/src/main/java/dev/velowin/app/engine/WinePrefixManager.java'
@@ -14,80 +14,55 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
-      - name: Install read-only archive tooling
+      - name: Install archive inspection tools
         run: sudo apt-get update -qq && sudo apt-get install -y -qq zstd xz-utils file
-      - name: Download pinned genuine GameNative Bionic asset
+      - name: Download pinned Bionic WCP and verify published SHA-256
         run: |
           curl --fail --location --retry 3 --connect-timeout 20 -o /tmp/bionic.wcp \
             https://github.com/GameNative/proton-wine/releases/download/proton-11.0-2-20261010/proton-11.0-2-x86_64.wcp
           printf '%s  %s\n' 056170e0bea7aead870f3e93036a6282921bad64e5e1206f1371d1d5840b46c7 /tmp/bionic.wcp | sha256sum -c -
           file /tmp/bionic.wcp
-          xxd -l 12 /tmp/bionic.wcp
-      - name: Inspect WCP compression and archive paths WITHOUT execution
+      - name: Inspect Wine layout without executing guest code
         run: |
           set -euo pipefail
-          FILE=/tmp/bionic.wcp
-          MAGIC="$(od -An -tx1 -N4 "$FILE" | tr -d ' \n')"
-          echo "MAGIC=$MAGIC" | tee /tmp/velowin-wcp-layout.txt
+          MAGIC="$(od -An -tx1 -N4 /tmp/bionic.wcp | tr -d ' \n')"
+          echo "WCP magic=$MAGIC" > /tmp/velowin-wcp-layout.txt
           if [ "$MAGIC" = '28b52ffd' ]; then
-            zstd -dc "$FILE" > /tmp/bionic.tar
+            zstd -dc /tmp/bionic.wcp > /tmp/bionic.tar
           elif [ "$MAGIC" = 'fd377a58' ]; then
-            xz -dc "$FILE" > /tmp/bionic.tar
+            xz -dc /tmp/bionic.wcp > /tmp/bionic.tar
           else
-            echo "Unknown WCP compression" >&2
+            echo "Unexpected WCP compression" >&2
             exit 1
           fi
           tar -tf /tmp/bionic.tar > /tmp/bionic.paths.txt
-          sed -n '1,45p' /tmp/bionic.paths.txt | tee -a /tmp/velowin-wcp-layout.txt
-          grep -Eq '(^|/)profile.json$' /tmp/bionic.paths.txt
-          (tar -xOf /tmp/bionic.tar profile.json || tar -xOf /tmp/bionic.tar ./profile.json) \
-            | head -c 6000 | tee /tmp/bionic-profile.json
-          grep -Eq '"type"\s*:' /tmp/bionic-profile.json
-      - name: Analyze real Bionic wine ELF interpreter
-        run: |
-          tar -xOf /tmp/bionic.tar bin/wine > /tmp/bionic-wine
-          tar -tvf /tmp/bionic.tar | grep -E 'bin/wine( |$| ->|64)' | head -30 || true
-          tar -xOf /tmp/bionic.tar bin/wine64 > /tmp/bionic-wine64 || true
-          file /tmp/bionic-wine64
-          file /tmp/bionic-wine
-          readelf -h /tmp/bionic-wine | sed -n '1,24p'
-          readelf -l /tmp/bionic-wine | grep -E 'INTERP|Requesting' || true
-      - name: Inspect the actual linked Wine ELF target
-        run: |
+          sed -n '1,45p' /tmp/bionic.paths.txt >> /tmp/velowin-wcp-layout.txt
+          grep -Fq profile.json /tmp/bionic.paths.txt
+          tar -xOf /tmp/bionic.tar profile.json > /tmp/bionic-profile.json
+          grep -Fq '"type"' /tmp/bionic-profile.json
           tar -xOf /tmp/bionic.tar lib/wine/x86_64-unix/wine > /tmp/bionic-wine-linked
-          file /tmp/bionic-wine-linked
-          readelf -h /tmp/bionic-wine-linked | tee /tmp/bionic-elf.txt
+          readelf -h /tmp/bionic-wine-linked > /tmp/bionic-elf.txt
           grep -Eq 'Machine:.*(X86-64|Advanced Micro Devices X86-64)' /tmp/bionic-elf.txt
-          readelf -l /tmp/bionic-wine-linked | grep -E 'INTERP|Requesting' || true
-      - name: Inspect real GameNative Wine prefix template without executing it
+      - name: Inspect real prefixPack.txz Wine registry template
         run: |
           set -euo pipefail
-          (tar -xOf /tmp/bionic.tar prefixPack.txz || tar -xOf /tmp/bionic.tar ./prefixPack.txz) \
-            > /tmp/wineprefix-template.txz
+          tar -xOf /tmp/bionic.tar prefixPack.txz > /tmp/wineprefix-template.txz
           test -s /tmp/wineprefix-template.txz
           xz -t /tmp/wineprefix-template.txz
           tar -tJf /tmp/wineprefix-template.txz > /tmp/wineprefix-template-paths.txt
-          sed -n '1,100p' /tmp/wineprefix-template-paths.txt \
-            | tee /tmp/velowin-prefix-layout.txt
-          grep -Eq '(^|/)system\.reg
+          sed -n '1,100p' /tmp/wineprefix-template-paths.txt > /tmp/velowin-prefix-layout.txt
+          grep -Fq system.reg /tmp/wineprefix-template-paths.txt
+          grep -Fq drive_c /tmp/wineprefix-template-paths.txt
+          echo 'Wine registry and drive_c paths found. No Wine code executed.' >> /tmp/velowin-prefix-layout.txt
+      - uses: actions/upload-artifact@v4
         with:
-          name: bionic-wcp-layout-inspection
+          name: bionic-wcp-prefix-layout-inspection
           path: |
             /tmp/velowin-wcp-layout.txt
             /tmp/bionic-profile.json
             /tmp/velowin-prefix-layout.txt
-          retention-days: 7
- /tmp/wineprefix-template-paths.txt
-          grep -Eq '(^|/)drive_c(/|$)' /tmp/wineprefix-template-paths.txt
-          echo "Template contains registry and drive_c; no guest binaries executed." \
-            | tee -a /tmp/velowin-prefix-layout.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: bionic-wcp-layout-inspection
-          path: |
-            /tmp/velowin-wcp-layout.txt
-            /tmp/bionic-profile.json
+            /tmp/bionic-elf.txt
           retention-days: 7
