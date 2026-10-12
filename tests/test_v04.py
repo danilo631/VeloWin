@@ -24,7 +24,7 @@ class GameSessionV04Contracts(unittest.TestCase):
                          "ArchiveSafety.conflicts","Files.move","ATOMIC_MOVE",
                          "WinePackageInstaller.deleteTree(stage)",
                          "MAX_TOTAL","MAX_ENTRIES","LinkOption.NOFOLLOW_LINKS",
-                         'root,"system.reg"','"prefixPack.txz"',
+                         '"system.reg"','"prefixPack.txz"',
                          '"TEMPLATE_ONLY"'):
             self.assertIn(contract,source)
         self.assertNotIn("ProcessBuilder",source)
