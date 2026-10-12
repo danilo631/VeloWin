@@ -317,16 +317,32 @@ public final class MainActivity extends Activity {
                 return;
             }
         }
+        final String title = name.replaceFirst("(?i)\\.exe$", "");
         try {
-            int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION |
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            getContentResolver().takePersistableUriPermission(uri, flags & Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            games.put(new Game(name.replaceFirst("(?i)\\.exe$", ""), uri.toString()));
-            draw();
+            getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
         }
-        catch (Exception failure) {
-            message("Falha ao adicionar jogo", errorText(failure));
+        catch (SecurityException permission) {
+            message("Permissão de arquivo", "Este seletor não permite acesso persistente ao EXE.");
+            return;
         }
+        worker.execute(() -> {
+            try (java.io.InputStream input = getContentResolver().openInputStream(uri)) {
+                String arch = PeInspector.inspect(input);
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    Game item = new Game(title, uri.toString());
+                    item.architecture = arch;
+                    try { games.put(item); draw(); }
+                    catch (IOException error) { message("Falha ao salvar jogo", errorText(error)); }
+                });
+            }
+            catch (Exception failure) {
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed())
+                        message("Arquivo EXE inválido", errorText(failure));
+                });
+            }
+        });
     }
 
     private void gameMenu(Game game) {
