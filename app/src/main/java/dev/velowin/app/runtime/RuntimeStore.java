@@ -74,24 +74,57 @@ public final class RuntimeStore {
     }
 
     public synchronized void add(ReleaseEntry info) throws IOException {
-        if (damaged) throw new IOException("Registro de runtimes danificado; preserve seus arquivos.");
-        entries.removeIf(e -> e.tag.equals(info.tag) && e.file.equals(info.name));
-        entries.add(new Installed(info.tag, info.name, info.sha256, info.size));
-        save();
+        ensureHealthy();
+        if (!ReleasePolicy.supported(info.tag, info.name)
+            || info.sha256 == null || !info.sha256.matches("[a-f0-9]{64}")
+            || !ReleasePolicy.validSize(info.size))
+            throw new IOException("Registro de versão Wine inválido.");
+        ArrayList<Installed> candidate = new ArrayList<>(entries);
+        candidate.removeIf(e -> e.tag.equals(info.tag) && e.file.equals(info.name));
+        candidate.add(new Installed(info.tag, info.name, info.sha256, info.size));
+        save(candidate);
+        entries.clear();
+        entries.addAll(candidate);
     }
 
     public synchronized void remove(Installed runtime) throws IOException {
-        if (damaged) throw new IOException("Registro de runtimes danificado.");
+        ensureHealthy();
+        if (!ReleasePolicy.supported(runtime.tag, runtime.file))
+            throw new IOException("Identificador inválido.");
+        if (WinePackageInstaller.installed(context, runtime))
+            throw new IOException("Remova a preparação Wine antes de remover o download.");
+
         File destination = new File(folder(), runtime.tag + "--" + runtime.file);
-        if (destination.exists() && !destination.delete())
-            throw new IOException("Não foi possível excluir o arquivo.");
-        entries.removeIf(e -> e.tag.equals(runtime.tag) && e.file.equals(runtime.file));
-        save();
+        File parked = new File(folder(), "." + runtime.tag + "--" + runtime.file + ".trash");
+        if (parked.exists()) throw new IOException("Remoção anterior precisa de recuperação.");
+        boolean present = destination.isFile();
+        if (present && !destination.renameTo(parked))
+            throw new IOException("Não foi possível mover download para quarentena.");
+        try {
+            ArrayList<Installed> candidate = new ArrayList<>(entries);
+            candidate.removeIf(e -> e.tag.equals(runtime.tag) && e.file.equals(runtime.file));
+            save(candidate);
+            entries.clear();
+            entries.addAll(candidate);
+        }
+        catch (IOException failure) {
+            if (present && !parked.renameTo(destination))
+                throw new IOException("Falha ao restaurar pacote após erro no registro.", failure);
+            throw failure;
+        }
+        if (present && !parked.delete()) {
+            // A completed registry operation remains authoritative; abandoned trash can be cleaned.
+            Log.w("VeloWinRuntime", "Orphaned trash file: " + parked.getName());
+        }
     }
 
-    private void save() throws IOException {
+    private void ensureHealthy() throws IOException {
+        if (damaged) throw new IOException("Registro de runtimes danificado; preserve seus arquivos.");
+    }
+
+    private void save(List<Installed> snapshot) throws IOException {
         JSONArray output = new JSONArray();
-        for (Installed entry : entries) {
+        for (Installed entry : snapshot) {
             JSONObject row = new JSONObject();
             try {
                 row.put("tag", entry.tag);
@@ -113,4 +146,5 @@ public final class RuntimeStore {
             throw error;
         }
     }
+
 }
