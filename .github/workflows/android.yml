@@ -32,14 +32,20 @@ jobs:
             app/src/main/java/dev/velowin/app/runtime/ArchiveSafety.java \
             app/src/main/java/dev/velowin/app/runtime/ElfVerifier.java \
             app/src/main/java/dev/velowin/app/library/PeInspector.java \
+            app/src/main/java/dev/velowin/app/engine/RuntimeStrategy.java \
+            app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
             tests/ReleasePolicyTest.java \
             tests/ArchiveSafetyTest.java \
             tests/ElfVerifierTest.java \
-            tests/PeInspectorTest.java
+            tests/PeInspectorTest.java \
+            tests/RuntimeStrategyTest.java \
+            tests/BionicReleasePolicyTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
           java -ea -cp /tmp/velowin-tests ArchiveSafetyTest
           java -ea -cp /tmp/velowin-tests ElfVerifierTest
           java -ea -cp /tmp/velowin-tests PeInspectorTest
+          java -ea -cp /tmp/velowin-tests RuntimeStrategyTest
+          java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
       - name: Static Android source contracts
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
 
@@ -62,13 +68,13 @@ jobs:
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
           test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018"
       - name: Assemble debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: velowin-v02-debug
+          name: velowin-v03-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
