@@ -1,27 +1,31 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[1]
+SRC=ROOT/"app/src/main/java/dev/velowin/app"
 
-class NativeBionicTest(unittest.TestCase):
-    def test_jni_probe_and_strategy(self):
-        src = (ROOT/"app/src/main/cpp/native_probe.c").read_text()
-        for val in ("vkCreateInstance", "vkEnumeratePhysicalDevices",
-                    "vkGetPhysicalDeviceProperties", "vkDestroyInstance"):
-            self.assertIn(val,src)
-        strategy=(ROOT/"app/src/main/java/dev/velowin/app/engine/RuntimeStrategy.java").read_text()
-        self.assertIn("archive == host",strategy)
+class BionicNativePipelineTest(unittest.TestCase):
+    def test_real_wcp_installer_inert_and_safe(self):
+        s=(SRC/"runtime/BionicWineInstaller.java").read_text()
+        for item in ("ZstdInputStream","TarArchiveInputStream","ArchiveSafety.member",
+                     "ArchiveSafety.symlinkTarget","MessageDigest.getInstance(\"SHA-256\")",
+                     "profile.json","prefixPack.txz","ElfVerifier.isMachine",
+                     "Files.move","cleanupUnfinished"):
+            self.assertIn(item,s)
+        self.assertNotIn("ProcessBuilder",s)
+        self.assertNotIn("Runtime.getRuntime()",s)
 
-    def test_box64_is_opt_in(self):
-        smoke=(ROOT/"app/src/main/java/dev/velowin/app/engine/Box64Smoke.java").read_text()
-        self.assertIn('nativeLibraryDir',smoke)
-        self.assertIn('"-v"',smoke)
-        self.assertNotIn("Runtime.getRuntime().exec",smoke)
-        action=(ROOT/".github/workflows/box64-bionic.yml").read_text()
-        self.assertIn("c6a8c4472f74f9ad204d35195f084b5f996b12e3",action)
-        self.assertIn("libvelobox64.so",action)
+    def test_bionic_library_and_gamehub_profile(self):
+        ui=(SRC/"MainActivity.java").read_text()
+        for value in ("Buscar Proton Bionic no GitHub","Preparar arquivos Bionic",
+                      "Aplicar configuração automática","Testar áudio, toque e controle",
+                      "Testar Box64 Bionic"):
+            self.assertIn(value,ui)
+        self.assertIn("BionicArchiveStore.saved(this)",ui)
 
-    def test_bionic_signed_metadata(self):
-        pol=(ROOT/"app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java").read_text()
-        self.assertIn("sha256:",pol)
-        self.assertIn("GameNative/proton-wine",pol)
+    def test_abi_never_assumed_equal(self):
+        strategy=(SRC/"engine/RuntimeStrategy.java").read_text()
+        self.assertIn("return archive == host",strategy)
+        gate=(SRC/"engine/EngineGate.java").read_text()
+        self.assertIn("isReady(Context context)",gate)
+        self.assertIn("return false",gate)

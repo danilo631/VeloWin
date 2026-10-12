@@ -1,51 +1,59 @@
 # VeloWin · Bionic Engine v0.3-dev
 
-## Filosofia de produto inspirada no GameHub
+## Filosofia de uso inspirada no GameHub
 
-A inspiração é de experiência, não cópia de UI/código: instalar, importar jogo, obter **perfil conservador de um toque**, mostrar somente opções úteis por padrão e diagnósticos objetivos de compatibilidade. A interface é totalmente própria.
+Biblioteca como centro do aplicativo, **perfil recomendado com um toque**, controles reconhecidos automaticamente, modos avançados opcionais, download guiado e estado de prontidão explícito. É uma inspiração conceitual de experiência; nenhum código, layout ou marca proprietária é reutilizado.
 
-## Linux/glibc ≠ Android/Bionic
+## Cadeia de execução pretendida
 
-| Peça | Bionic (prioridade) | glibc (legado do v0.2) |
+```text
+Jogo Windows (.exe) - PE x64 ou x86
+    ↓ perfil por jogo
+Wine/Proton compilado para Android Bionic (GameNative)
+    ↓ ELF x86_64 via Box64 AArch64 ou ARM64EC/FEX quando integrado
+Android libc Bionic + dependências compatíveis
+    ↓
+Windows display (X11/Surface Android)    [PENDENTE]
+Wine audio → host Android                [PENDENTE]
+Wine keyboard/gamepad → Android          [PENDENTE]
+D3D → DXVK/VKD3D → Vulkan Android        [PENDENTE]
+    ↓
+Jogo renderizado e áudio no Android      [AINDA NÃO FUNCIONA]
+```
+
+**Bionic não é glibc.** Wine Linux em `wine-*-amd64-wow64.tar.xz` e Wine Android GameNative `.wcp` não são intercambiáveis. Em Bionic não é preciso instalar um rootfs Linux glibc só para obter libc; ainda são necessárias bibliotecas Wine/Box64/X11 e isolamento. O `BionicWorkspace` prepara diretórios privados Android, mas não cria um rootfs Linux nem um prefixo Windows.
+
+## Funcionalidades implementadas
+
+1. **Vulkan JNI Android**: `vkCreateInstance`, `vkEnumeratePhysicalDevices`, propriedades da GPU, extensões swapchain/timeline/memory-budget; libera corretamente instância Vulkan. Nem todas as extensões exigidas por DXVK são consultadas.
+2. **AudioTrack**: emite tom curto PCM para verificar o áudio nativo do Android, separado da saída Wine.
+3. **Gamepad e touch**: recebe eventos `MotionEvent` e `KeyEvent` e desenha o movimento no Canvas Android, ainda sem converter para API de entrada Windows.
+4. **Catálogo GameNative**: valida nomes `proton-x.y-z-...wcp`, URL GitHub canônica, tamanho e `assets[].digest=sha256:...`; baixa só por TLS/CDN permitida e armazena localmente.
+5. **Instalador WCP**: confirmado no workflow real que o pacote Proton 11.0-2 x86_64 de 10/10/2026 é **Zstandard TAR**, com `profile.json`, `bin/wine` link simbólico para `../lib/wine/x86_64-unix/wine`, pastas `bin/lib` e `prefixPack.txz`. O `BionicWineInstaller` revalida SHA-256 e examina links, caminhos, tamanho, manifesto, presença da imagem ELF de arquitetura esperada e só então instala atomicamente. A extração ainda não foi validada num aparelho físico.
+6. **Build Box64 Bionic**: workflow experimental compila o commit upstream `c6a8c4472f74f9ad204d35195f084b5f996b12e3` para ARM64 com NDK 27.2, confirma linker Android e dependência `libc.so`, e cria um APK experimental. Os testes de CI **não são um teste real do Box64 em aparelho**.
+7. **Pré-requisitos de launch**: os bloqueios são explícitos: prefixo Wine não preparado, Wine display/audio/input ausentes, DXVK e compatibilidade de GPU por jogo ainda não implementados. O botão Jogar não executa binários.
+
+## Segurança e limitações
+
+- Sem root, ADB, overclock, acesso amplo à galeria ou instalação silenciosa de drivers.
+- Todos os dados extraídos permanecem na pasta privada do aplicativo; a extração não executa conteúdo WCP.
+- Sem assinatura independente do upstream: o campo `assets[].digest` confere os bytes distribuídos no **mesmo** GitHub release.
+- WCP TAR: dispositivos, hardlinks e caminhos absolutos são proibidos; links relativos são avaliados lexicalmente e criados só depois de todos os arquivos comuns.
+- Instalações são atômicas, falhas temporárias são recuperáveis, versões instaladas ficam separadas por tag.
+- Ainda pode haver incompatibilidade de um pacote específico com o instalador; o CI verificou o arquivo WCP real em ambiente Linux, não a extração dentro de Android.
+- Box64 upstream com `ANDROID=ON` pode assumir bibliotecas/prefixos Termux. Compilar o binário e executar `-v` não prova que Wine Bionic funcione.
+
+## Matrizes de suporte
+
+| GPU | Configuração inicial | Observação |
 |---|---|---|
-| libc | Android `libc.so` / linker64 | Linux `libc.so.6` / ld-linux |
-| Wine | GameNative `proton-...-x86_64.wcp` ou ARM64EC | Kron4ek `wine-...-amd64-wow64.tar.xz` |
-| Tradutor | Box64 nativo ARM64; FEX requer integração separada | Box64 compilado para Linux ARM64 |
-| Rootfs | Diretórios Bionic privados + dependências Android/Termux compatíveis | Rootfs glibc completo com libs Linux |
-| Graphics | Host Android Vulkan via JNI, X11/WSI futuro | Mesa/glibc ou adaptador host |
-| Áudio | AudioTrack Android já testável; ponte Wine ainda pendente | PulseAudio/glibc pendente |
+| Mali / Immortalis | Vulkan Android do sistema | não tentar Turnip |
+| Adreno | Vulkan Android do sistema | Turnip será opcional após teste |
+| Xclipse / PowerVR | Vulkan Android do sistema | suporte DXVK/VKD3D depende de extensões |
+| Sem Vulkan | WineD3D futuramente | sem aceleração D3D/Vulkan garantida |
 
-**Nunca extrair um pacote Bionic usando o instalador Wine glibc v0.2.** Um arquivo WCP GameNative contém um formato e manifesto específicos e requer verificação antes de instalar. O VeloWin v0.3 só baixa e verifica SHA-256 dos WCP — não extrai nem executa esses arquivos. Os hashes vêm do campo `assets[].digest` do GitHub, fornecido pelo mesmo canal de download, não por uma assinatura separada do publisher.
+## Referências
 
-## Funcionalidades implementadas e instrumentadas
+[Box64](https://github.com/ptitSeb/box64) · [FEX](https://github.com/FEX-Emu/FEX) · [GameNative Proton Wine](https://github.com/GameNative/proton-wine/releases) · [DXVK](https://github.com/doitsujin/dxvk) · [VKD3D-Proton](https://github.com/HansKristian-Work/vkd3d-proton) · [GameSir GameHub](https://gamesir.com/pt-BR/support/downloads).
 
-- **JNI Vulkan nativo**: cria uma instância real Vulkan Android, enumera GPU, extensão swapchain/timeline/memory-budget, limites e anisotropia; libera a instância.
-- **Laboratório Android**: Canvas com toque visual, joystick AXIS_X/Y, botões de controle e AudioTrack PCM. Não são interfaces Wine ainda.
-- **Workspace Bionic**: diretórios internos `home, tmp, logs, cache, prefixes, mounts`, sem root e sem glibc; *não* é Wineprefix inicializado.
-- **Catálogo GameNative**: releases Proton Wine Android para x86_64 e ARM64EC, URL permitida, SHA-256, espaço livre, TLS e CDN validada. Download privado e cancelável.
-- **Perfis automáticos**: para jogos x86/x64, preferir Box64 Bionic, Vulkan do sistema e preservação de dados por jogo, sem overclock.
-- **Build Box64**: GitHub Actions experimental faz checkout de commit upstream `c6a8c4472f74f9ad204d35195f084b5f996b12e3`, compila com NDK r27c, verifica ELF AArch64 / linker Bionic e empacota um APK diagnóstico separado. O apk normal **não** inclui Box64.
-- **Autoteste Box64**: nos APKs experimentais, executa somente `box64 -v` como subprocesso com timeout, sem abrir EXEs ou Wine.
-
-## Integração faltante antes de jogos reais
-
-A execução de Wine e de jogos Windows permanece bloqueada enquanto não houver, efetivamente:
-1. Instalador WCP robusto (tar.xz ou zstd, `profile.json`, caminhos, symlinks e dependências ELF).
-2. Verificação real do tradutor e lançamento da arquitetura Wine correta com prefixo Windows.
-3. Ponte X11 ou outra implementação de janelas Windows para Surface Android.
-4. Áudio real do Wine/WinMM/PulseAudio para Android, não apenas o som de teste AudioTrack.
-5. Mapeamento efetivo de gamepad/teclado/toque para eventos Windows.
-6. DXVK/VKD3D-Proton redistribuíveis com licenças e extensões Vulkan comprovadas.
-7. Testes em telefone ARM64 real, incluindo Mali e Adreno. GitHub Actions em Ubuntu **não** roda Wine Android ARM64.
-
-## Fonte upstream
-
-- [Box64](https://github.com/ptitSeb/box64): MIT, CMake possui opções Android e Termux; próprio upstream alerta limitações de executáveis Linux no Android native Termux.
-- [FEX](https://github.com/FEX-Emu/FEX): MIT, engine AArch64 que não substitui Box64 Bionic automaticamente.
-- [GameNative/proton-wine](https://github.com/GameNative/proton-wine/releases): WCP Android/Bionic Proton experimental.
-- [DXVK](https://github.com/doitsujin/dxvk), [VKD3D-Proton](https://github.com/HansKristian-Work/vkd3d-proton): camadas Windows D3D → Vulkan; Vulkan 1.3 não garante todas as extensões.
-- [GameSir GameHub](https://gamesir.com/pt-BR/support/downloads): referência conceitual de experiência centralizada. O VeloWin não é afiliado à GameSir.
-
-## O que os testes realmente provam
-
-Testes Java verificam políticas de ABI, SHA, nomes de pacotes e prontidão do engine; testes Android build verificam que Vulkan JNI/CMake compila. O job Box64 apenas faz cross-compilation e inspeciona ELF/linker — **nenhum desempenho FPS ou Wine startup é medido**.
+O conteúdo **não** representa afiliação com essas marcas.
