@@ -24,7 +24,7 @@ public final class EngineGate {
         String status = prepared == 0
             ? "Nenhum Wine preparado. Abra Runtimes para baixar e preparar uma versão."
             : prepared + " pacote(s) Wine preparados, mas ainda sem motor ARM64.";
-        return status + "\n\nFalta integrar e validar o tradutor x86 (Box64/FEX), "
+        return "Motor Windows ainda não integrado. " + status + "\n\nFalta integrar e validar o tradutor x86 (Box64/FEX), "
             + "rootfs Linux/glibc, Wineprefix, display/input/áudio e Vulkan/DXVK. "
             + "O VeloWin impede iniciar binários Windows sem esses módulos.";
     }
