@@ -276,7 +276,8 @@ public final class MainActivity extends Activity {
                 + "\n" + game.resolution + " / FPS alvo " + (game.fpsLimit==0?"livre":game.fpsLimit)
                 + (game.runtimeTag.isEmpty() ? "" : "\nWine: " + GameRuntimeChoice.fromStored(game.runtimeTag).label()),
                 12, MUTED, false, 0);
-            action(item, "Abrir opções", () -> gameMenu(game), false);
+            action(item, "Entrar no contêiner", () -> openContainer(game), true);
+            action(item, "Configurações do jogo", () -> gameMenu(game), false);
         }
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence t, int a, int c, int z) {}
@@ -367,6 +368,12 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private void openContainer(Game game) {
+        Intent intent=new Intent(this,ContainerLabActivity.class);
+        if(game!=null)intent.putExtra("game_id",game.id);
+        startActivity(intent);
+    }
+
     private void gameMenu(Game game) {
         new AlertDialog.Builder(this).setTitle(game.title)
             .setItems(new String[]{"Informações e jogar", "Configurar tradutor",
@@ -376,7 +383,8 @@ public final class MainActivity extends Activity {
                 "Aplicar configuração automática", "Ajustar Box64 Dynarec",
                 "Preparar prefixo Windows", "Pré-verificação de sessão",
                 "Resolução virtual e FPS", "Renderizador Direct3D",
-                "Testar Wine deste jogo", "Compartilhar perfil"}, (d, which) -> {
+                "Testar Wine deste jogo", "Compartilhar perfil",
+                "Abrir contêiner Bionic (novo)"}, (d, which) -> {
                 switch (which) {
                     case 0: message("Motor não disponível", EngineGate.reason(this, game)); break;
                     case 1: chooseBackend(game); break;
@@ -398,6 +406,7 @@ public final class MainActivity extends Activity {
                     case 14: chooseDirect3d(game); break;
                     case 15: gameWineSmoke(game); break;
                     case 16: shareGameProfile(game); break;
+                    case 17: openContainer(game); break;
                 }
             })
             .setNegativeButton("Fechar", null).show();
@@ -867,6 +876,7 @@ public final class MainActivity extends Activity {
         action(bionic, "Limpar extrações Bionic interrompidas", this::cleanBionic, false);
         action(bionic, "Limpar prefixos de jogos interrompidos", this::cleanGamePrefixes, false);
         action(bionic, "Preparar workspace Android", this::prepareWorkspace, false);
+        action(bionic, "Abrir console de contêiner (sem jogo)", () -> openContainer(null), true);
         add(bionic, BionicWorkspace.status(this), 12, MUTED, false, 2);
         ArrayList<BionicRelease> cached=BionicArchiveStore.saved(this);
         if(!cached.isEmpty()){
@@ -1452,12 +1462,12 @@ public final class MainActivity extends Activity {
         return count;
     }
 
-    private String getVersionName() { return "0.4.0-dev"; }
+    private String getVersionName() { return "0.7.0-dev"; }
 
     private void renderAbout() {
         section("Sobre o VeloWin", "Uma plataforma Android original, aberta e modular.");
         LinearLayout card = card();
-        add(card, "VeloWin 0.4.0-dev", 18, WHITE, true, 7);
+        add(card, "VeloWin 0.7.0-dev", 18, WHITE, true, 7);
         add(card, "Interface própria, biblioteca com favoritos e inspeção PE, "
             + "diagnóstico gráfico/térmico, downloads SHA-256 e extração segura "
             + "de arquivos Wine. O motor de execução continua em desenvolvimento.", 13, MUTED, false, 10);
