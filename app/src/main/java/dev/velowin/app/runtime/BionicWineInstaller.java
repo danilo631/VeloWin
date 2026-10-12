@@ -64,7 +64,7 @@ public final class BionicWineInstaller {
                     || !entry.name.equals(stored.optString("file")))return false;
             File wine=new File(root,"bin/wine");
             if(!wine.isFile()||!contains(root,wine))return false;
-            return ElfVerifier.isMachine(wine,"ARM64EC".equals(entry.arch)?183:62);
+            return ElfVerifier.isBionicMachine(wine,"ARM64EC".equals(entry.arch)?183:62);
         }catch(Exception ignored){return false;}
     }
 
@@ -200,7 +200,7 @@ public final class BionicWineInstaller {
             if(!executable.isFile()||!contains(stage,executable))
                 throw new IOException("WCP não possui bin/wine confiável.");
             int machine="ARM64EC".equals(entry.arch)?183:62;
-            if(!ElfVerifier.isMachine(executable,machine))
+            if(!ElfVerifier.isBionicMachine(executable,machine))
                 throw new IOException("Executável Wine não corresponde à arquitetura "+entry.arch);
             // PrefixPack is a compressed template; NEVER automatically run wineboot here.
             File prefixPack=new File(stage,"prefixPack.txz");
