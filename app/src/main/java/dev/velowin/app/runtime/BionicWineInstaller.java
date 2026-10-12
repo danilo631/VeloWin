@@ -231,6 +231,24 @@ public final class BionicWineInstaller {
         }
     }
 
+    /** Remove only abandoned, UUID-named staging folders, never completed installations. */
+    public static int cleanupUnfinished(Context ctx) throws IOException {
+        File base=new File(ctx.getFilesDir(),"bionic-wine-filesystems");
+        if(!base.isDirectory())return 0;
+        File[] children=base.listFiles();
+        if(children==null)throw new IOException("Falha ao ler pastas Bionic.");
+        int removed=0;
+        for(File folder:children){
+            if(!folder.getName().matches("\\.staging-[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+                || !folder.isDirectory() || Files.isSymbolicLink(folder.toPath()))continue;
+            if(!folder.getCanonicalFile().getParentFile().equals(base.getCanonicalFile()))
+                throw new IOException("Destino da recuperação fora do Bionic.");
+            WinePackageInstaller.deleteTree(folder);
+            removed++;
+        }
+        return removed;
+    }
+
     public static void uninstall(Context ctx,BionicRelease release) throws IOException {
         File installed=folder(ctx,release);
         if(!installed.exists())return;
