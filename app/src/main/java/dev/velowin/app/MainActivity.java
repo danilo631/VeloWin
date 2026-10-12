@@ -36,6 +36,7 @@ import dev.velowin.app.engine.Box64Tuning;
 import dev.velowin.app.engine.WineVersionSmoke;
 import dev.velowin.app.engine.WinePrefixManager;
 import dev.velowin.app.engine.GameRuntimeChoice;
+import dev.velowin.app.engine.GameSessionConfig;
 import dev.velowin.app.engine.BionicSessionPlan;
 import android.view.Gravity;
 import android.view.View;
@@ -268,7 +269,9 @@ public final class MainActivity extends Activity {
             add(item, (game.favorite ? "★  " : "") + game.title, 17, WHITE, true, 5);
             add(item, "PE " + game.architecture + "   •   CPU: " + game.backend
                 + " (" + Box64Tuning.fromGame(game.boxPreset) + ")"
-                + "\nVulkan: " + game.graphics + (game.runtimeTag.isEmpty() ? "" : "   •   Wine: " + game.runtimeTag),
+                + "\nGPU: " + game.graphics + "   •   D3D: " + game.renderApi
+                + "\n" + game.resolution + " / FPS alvo " + (game.fpsLimit==0?"livre":game.fpsLimit)
+                + (game.runtimeTag.isEmpty() ? "" : "\nWine: " + GameRuntimeChoice.fromStored(game.runtimeTag).label()),
                 12, MUTED, false, 0);
             action(item, "Abrir opções", () -> gameMenu(game), false);
         }
@@ -368,7 +371,8 @@ public final class MainActivity extends Activity {
                 "Anotações", game.favorite ? "Remover dos favoritos" : "Adicionar aos favoritos",
                 "Verificar acesso ao arquivo", "Remover da biblioteca",
                 "Aplicar configuração automática", "Ajustar Box64 Dynarec",
-                "Preparar prefixo Windows", "Pré-verificação de sessão"}, (d, which) -> {
+                "Preparar prefixo Windows", "Pré-verificação de sessão",
+                "Resolução virtual e FPS", "Renderizador Direct3D"}, (d, which) -> {
                 switch (which) {
                     case 0: message("Motor não disponível", EngineGate.reason(this, game)); break;
                     case 1: chooseBackend(game); break;
@@ -386,6 +390,8 @@ public final class MainActivity extends Activity {
                     case 10: chooseDynarec(game); break;
                     case 11: prefixMenu(game); break;
                     case 12: sessionPreflight(game); break;
+                    case 13: chooseDisplayProfile(game); break;
+                    case 14: chooseDirect3d(game); break;
                 }
             })
             .setNegativeButton("Fechar", null).show();
@@ -433,6 +439,11 @@ public final class MainActivity extends Activity {
                     if(isDestroyed()||isFinishing())return;
                     game.backend="BOX64";
                     game.graphics=profile.driver;
+                    game.renderApi="VKD3D_CANDIDATE".equals(profile.direct3d)?"VKD3D"
+                        :"DXVK_CANDIDATE".equals(profile.direct3d)?"DXVK":"WINED3D";
+                    game.resolution=GameSessionConfig.recommendation(mem.totalMem,
+                        gpu.renderer.toLowerCase(Locale.ROOT).contains("mali"),false);
+                    game.fpsLimit=60;
                     game.boxPreset=profile.tier==dev.velowin.app.engine.SmartProfile.Tier.COMPATIBILITY
                         ?"STABILITY":profile.tier==dev.velowin.app.engine.SmartProfile.Tier.PERFORMANCE
                         ?"PERFORMANCE":"BALANCED";
@@ -511,6 +522,51 @@ public final class MainActivity extends Activity {
                 && BionicWineInstaller.installed(this,entry))return entry;
         }
         return null;
+    }
+
+    private void chooseDisplayProfile(Game game) {
+        String[] labels={"960×540 (baixo consumo)","1280×720 (padrão)",
+            "1600×900 (intermediário)","1920×1080 (alta resolução)"};
+        String[] values={"960x540","1280x720","1600x900","1920x1080"};
+        int chosen=1;
+        for(int i=0;i<values.length;i++)if(values[i].equals(game.resolution))chosen=i;
+        new AlertDialog.Builder(this).setTitle("Resolução · "+game.title)
+            .setSingleChoiceItems(labels,chosen,(dialog,index)->{
+                game.resolution=values[index];
+                saveGame(game);dialog.dismiss();
+                message("Resolução salva",game.resolution+" será solicitada quando a "
+                    +"ponte de janelas estiver integrada. A resolução física não muda.");
+            })
+            .setNeutralButton("Limite de FPS",(d,w)->chooseFrameTarget(game))
+            .setNegativeButton("Cancelar",null).show();
+    }
+
+    private void chooseFrameTarget(Game game) {
+        String[] options={"Sem limite configurado","30 FPS","45 FPS","60 FPS","90 FPS","120 FPS"};
+        int[] rates={0,30,45,60,90,120};
+        int chosen=3;
+        for(int i=0;i<rates.length;i++)if(rates[i]==game.fpsLimit)chosen=i;
+        new AlertDialog.Builder(this).setTitle("FPS alvo · "+game.title)
+            .setSingleChoiceItems(options,chosen,(dialog,index)->{
+                game.fpsLimit=rates[index];saveGame(game);dialog.dismiss();
+                message("Preferência salva",options[index]+
+                    ". Ainda não há limitador de frames de jogos integrado.");
+            }).setNegativeButton("Cancelar",null).show();
+    }
+
+    private void chooseDirect3d(Game game) {
+        String[] labels={"WineD3D (OpenGL)",
+            "DXVK (D3D8–11, ainda não instalado)",
+            "VKD3D-Proton (D3D12, ainda não instalado)"};
+        String[] values={"WINED3D","DXVK","VKD3D"};
+        new AlertDialog.Builder(this).setTitle("Direct3D · "+game.title)
+            .setSingleChoiceItems(labels,GameSessionConfig.graphics(game.renderApi).ordinal(),
+                (dialog,index)->{
+                    game.renderApi=values[index];saveGame(game);dialog.dismiss();
+                    message("Perfil salvo",GameSessionConfig.describe(
+                        GameSessionConfig.graphics(game.renderApi),false)
+                        +". A seleção não instala DLLs nem ativa drivers.");
+                }).setNegativeButton("Cancelar",null).show();
     }
 
     private void prefixMenu(Game game) {
@@ -611,13 +667,20 @@ public final class MainActivity extends Activity {
         BionicSessionPlan.Translator translator="FEX".equals(game.backend)
             ?BionicSessionPlan.Translator.FEX:BionicSessionPlan.Translator.BOX64;
         // A GPU Vulkan observada não equivale a um backend gráfico Win32.
+        BionicSessionPlan.Graphics layer="VKD3D".equals(game.renderApi)
+            ?BionicSessionPlan.Graphics.VKD3D
+            :"DXVK".equals(game.renderApi)?BionicSessionPlan.Graphics.DXVK
+            :BionicSessionPlan.Graphics.OPENGL;
         BionicSessionPlan report=BionicSessionPlan.evaluate(translator,
-            BionicSessionPlan.Graphics.OPENGL,wine.arch,game.architecture,
+            layer,wine.arch,game.architecture,
             false,false,"BOX64".equals(game.backend)&&Box64Smoke.bundled(this),
             BionicWineInstaller.installed(this,wine),
             false,false,false,false,false,false);
         message("Pré-verificação · "+game.title,
             "Wine: "+wine.tag+" / "+wine.arch
+            +"\nResolução alvo: "+game.resolution+" / FPS "+game.fpsLimit
+            +"\nCamada gráfica: "+GameSessionConfig.describe(
+                GameSessionConfig.graphics(game.renderApi),false)
             +"\nTemplate prefixo: "+(template?"preparado":"ausente")
             +"\nWineboot: NÃO validado"
             +"\n\n"+report.diagnostic()
@@ -1260,12 +1323,12 @@ public final class MainActivity extends Activity {
         return count;
     }
 
-    private String getVersionName() { return "0.3.0-dev"; }
+    private String getVersionName() { return "0.4.0-dev"; }
 
     private void renderAbout() {
         section("Sobre o VeloWin", "Uma plataforma Android original, aberta e modular.");
         LinearLayout card = card();
-        add(card, "VeloWin 0.3.4-dev", 18, WHITE, true, 7);
+        add(card, "VeloWin 0.4.0-dev", 18, WHITE, true, 7);
         add(card, "Interface própria, biblioteca com favoritos e inspeção PE, "
             + "diagnóstico gráfico/térmico, downloads SHA-256 e extração segura "
             + "de arquivos Wine. O motor de execução continua em desenvolvimento.", 13, MUTED, false, 10);
