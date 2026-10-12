@@ -39,6 +39,8 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/FailureClassifier.java \
             app/src/main/java/dev/velowin/app/engine/EngineReadiness.java \
             app/src/main/java/dev/velowin/app/engine/BionicSessionPlan.java \
+            app/src/main/java/dev/velowin/app/engine/GameRuntimeChoice.java \
+            app/src/main/java/dev/velowin/app/engine/GameSessionConfig.java \
             app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
             tests/ReleasePolicyTest.java \
             tests/ArchiveSafetyTest.java \
@@ -51,6 +53,8 @@ jobs:
             tests/FailureClassifierTest.java \
             tests/EngineReadinessTest.java \
             tests/BionicSessionPlanTest.java \
+            tests/GameRuntimeChoiceTest.java \
+            tests/GameSessionConfigTest.java \
             tests/BionicReleasePolicyTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
           java -ea -cp /tmp/velowin-tests ArchiveSafetyTest
@@ -63,6 +67,8 @@ jobs:
           java -ea -cp /tmp/velowin-tests FailureClassifierTest
           java -ea -cp /tmp/velowin-tests EngineReadinessTest
           java -ea -cp /tmp/velowin-tests BionicSessionPlanTest
+          java -ea -cp /tmp/velowin-tests GameRuntimeChoiceTest
+          java -ea -cp /tmp/velowin-tests GameSessionConfigTest
           java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
       - name: Static Android source contracts
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
@@ -92,7 +98,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: velowin-v035-debug
+          name: velowin-v04-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
