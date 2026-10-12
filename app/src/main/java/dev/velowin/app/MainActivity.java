@@ -706,15 +706,56 @@ public final class MainActivity extends Activity {
         add(note, "VeloWin não altera frequências da GPU, root, ADB ou "
             + "bibliotecas do sistema. A disponibilidade real de Vulkan precisa "
             + "ser testada com um motor carregado.", 13, MUTED, false, 0);
+        action(note, "Compartilhar diagnóstico do dispositivo", this::shareDiagnostics, false);
     }
+
+    private void shareDiagnostics() {
+        worker.execute(() -> {
+            GpuInspector.Info info = GpuInspector.inspect(getApplicationContext());
+            String report = "VeloWin " + getVersionName()
+                + "\nAndroid " + Build.VERSION.RELEASE
+                + "\nGPU: " + info.renderer
+                + "\nOpenGL: " + info.opengl
+                + "\nVulkan: " + info.vulkan
+                + "\nABI: " + info.abi
+                + "\nPolítica GPU: " + info.recommendation
+                + "\n" + dev.velowin.app.hardware.DeviceHealth.snapshot(getApplicationContext())
+                + "\nWine preparado: " + countPreparedWine()
+                + "\nMotor Windows: NÃO integrado";
+            runOnUiThread(() -> {
+                if (isDestroyed() || isFinishing()) return;
+                try {
+                    Intent sharing = new Intent(Intent.ACTION_SEND);
+                    sharing.setType("text/plain");
+                    sharing.putExtra(Intent.EXTRA_TEXT, report);
+                    startActivity(Intent.createChooser(sharing, "Enviar diagnóstico VeloWin"));
+                }
+                catch (ActivityNotFoundException error) {
+                    message("Diagnóstico VeloWin", report);
+                }
+            });
+        });
+    }
+
+    private int countPreparedWine() {
+        int count = 0;
+        try {
+            for (RuntimeStore.Installed item : new RuntimeStore(this).all())
+                if (WinePackageInstaller.installed(this, item)) count++;
+        }
+        catch (RuntimeException ignored) {}
+        return count;
+    }
+
+    private String getVersionName() { return "0.2.0"; }
 
     private void renderAbout() {
         section("Sobre o VeloWin", "Uma plataforma Android original, aberta e modular.");
         LinearLayout card = card();
-        add(card, "VeloWin 0.1.0", 18, WHITE, true, 7);
-        add(card, "Interface própria, biblioteca de jogos, seleção de perfis, "
-            + "diagnóstico gráfico e downloads verificáveis de Wine/Proton. "
-            + "O módulo de execução está em desenvolvimento.", 13, MUTED, false, 10);
+        add(card, "VeloWin 0.2.0", 18, WHITE, true, 7);
+        add(card, "Interface própria, biblioteca com favoritos e inspeção PE, "
+            + "diagnóstico gráfico/térmico, downloads SHA-256 e extração segura "
+            + "de arquivos Wine. O motor de execução continua em desenvolvimento.", 13, MUTED, false, 10);
         action(card, "Código-fonte no GitHub",
             () -> browse("https://github.com/danilo631/VeloWin"), false);
         action(card, "Arquitetura e roadmap",
