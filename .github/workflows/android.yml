@@ -33,6 +33,7 @@ jobs:
             app/src/main/java/dev/velowin/app/runtime/ElfVerifier.java \
             app/src/main/java/dev/velowin/app/library/PeInspector.java \
             app/src/main/java/dev/velowin/app/engine/RuntimeStrategy.java \
+            app/src/main/java/dev/velowin/app/engine/SmartProfile.java \
             app/src/main/java/dev/velowin/app/engine/EngineReadiness.java \
             app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
             tests/ReleasePolicyTest.java \
@@ -40,6 +41,7 @@ jobs:
             tests/ElfVerifierTest.java \
             tests/PeInspectorTest.java \
             tests/RuntimeStrategyTest.java \
+            tests/SmartProfileTest.java \
             tests/EngineReadinessTest.java \
             tests/BionicReleasePolicyTest.java
           java -ea -cp /tmp/velowin-tests ReleasePolicyTest
@@ -47,6 +49,7 @@ jobs:
           java -ea -cp /tmp/velowin-tests ElfVerifierTest
           java -ea -cp /tmp/velowin-tests PeInspectorTest
           java -ea -cp /tmp/velowin-tests RuntimeStrategyTest
+          java -ea -cp /tmp/velowin-tests SmartProfileTest
           java -ea -cp /tmp/velowin-tests EngineReadinessTest
           java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
       - name: Static Android source contracts
@@ -77,7 +80,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: velowin-v03-debug
+          name: velowin-v034-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
