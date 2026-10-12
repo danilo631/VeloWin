@@ -23,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.AtomicMoveNotSupportedException;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Locale;
@@ -125,10 +124,8 @@ public final class WinePrefixManager {
         Set<String> links=new HashSet<>();
         List<String[]> pending=new ArrayList<>();
         try {
-            MessageDigest packHash=MessageDigest.getInstance("SHA-256");
             try(InputStream source=new BufferedInputStream(new FileInputStream(archive),65536);
-                java.security.DigestInputStream dig=new java.security.DigestInputStream(source,packHash);
-                XZCompressorInputStream decoded=new XZCompressorInputStream(dig);
+                XZCompressorInputStream decoded=new XZCompressorInputStream(source);
                 TarArchiveInputStream tar=new TarArchiveInputStream(decoded)) {
                 byte[] buf=new byte[65536];
                 TarArchiveEntry member;
