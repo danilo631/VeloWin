@@ -32,3 +32,13 @@
 
 ## v1.0
 - [ ] Benchmarks reais, saves, backups, DRM considerations, experiência assistida, APK assinado
+
+## v0.3.5-dev — diagnóstico reproduzível e experiência simplificada
+- [x] Perfis Box64 DynaRec Compatibilidade/Equilibrado/Desempenho por jogo, variáveis baseadas em docs upstream
+- [x] Supervisor de diagnóstico `--version` e `-v` com pipe assíncrono, limite de saída/tempo e limpeza
+- [x] Erros de ABI/Bionic, libs, X11, Vulkan interpretados em recomendações claras
+- [x] Laboratório Surface OpenGL ES com contador observacional de quadros em tela Android
+- [x] Testes Java para processos, presets e falhas; contratos estáticos para laboratório Android
+- [ ] Gráficos *Windows* em Surface Android (servidor X11/WSI), áudio e controle Wine reais
+- [ ] `wineboot` e prefixo com gerenciamento seguro de filhos/encerramento, dependências verificadas
+- [ ] Implementação de DXVK e VKD3D validada em jogos autorizados Mali/Adreno

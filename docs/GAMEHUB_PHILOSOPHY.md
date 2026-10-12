@@ -26,3 +26,8 @@ A inspiração é **produto**, não reutilização de interface, assets ou códi
 6. Rodar testes end-to-end por hardware real (Mali e Adreno), com jogos autorizados e executáveis de referência.
 
 GameHub e Valve são marcas de terceiros. VeloWin não afirma associação.
+
+## Próxima implementação: práticas externas avaliadas (v0.3.5)
+A partir do Winlator: preferir configurações por jogo e perfis de estabilidade, manter diagnóstico de latência e política conservadora. Do Mobox: modos Box64 específicos, seleção de Wine, separação do contêiner e ferramentas de log; **Mobox upstream está arquivado desde junho de 2025**. Da experiência GameHub: ações simples por jogo, tela central de suporte, menos opções obrigatórias. Não copiar código, arte, marca ou assets de terceiros.
+
+Foram adicionados: DynaRec por jogo, saída capturada de processos com timeout, análise de causas mais frequentes e demonstração de renderização Android em Surface. O último não é um servidor de janelas Windows e não constitui um motor de jogo.
