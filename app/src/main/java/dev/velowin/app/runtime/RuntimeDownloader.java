@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.net.ssl.HttpsURLConnection;
 
-/** Downloads are stored inert, verified, and NOT extracted/executed. */
+/** Downloads are verified, then may be extracted by the separate WinePackageInstaller; never executed. */
 public final class RuntimeDownloader {
     public interface Progress { void onProgress(int percent); }
     private RuntimeDownloader() {}
@@ -32,6 +32,8 @@ public final class RuntimeDownloader {
             throw new IOException("Sem espaço livre suficiente para o download.");
         File target = new File(directory, entry.tag + "--" + entry.name);
         File staging = new File(directory, entry.tag + "--" + entry.name + ".part");
+        File backup = new File(directory, entry.tag + "--" + entry.name + ".backup");
+        if (backup.exists()) throw new IOException("Há uma substituição pendente desta versão Wine.");
         if (staging.exists() && !staging.delete())
             throw new IOException("Não foi possível limpar download anterior.");
 
@@ -80,11 +82,25 @@ public final class RuntimeDownloader {
             if (!entry.sha256.equals(calculated.toString()))
                 throw new IOException("SHA-256 não confere. Download rejeitado.");
             if (cancel.get()) throw new IOException("Download cancelado.");
-            if (target.exists() && !target.delete())
-                throw new IOException("Não foi possível substituir pacote antigo.");
-            if (!staging.renameTo(target))
+            // Preserve previous download until both file and AtomicFile registry succeed.
+            boolean previous = target.exists();
+            if (previous && !target.renameTo(backup))
+                throw new IOException("Falha ao proteger download antigo.");
+            if (!staging.renameTo(target)) {
+                if (previous) backup.renameTo(target);
                 throw new IOException("Falha ao finalizar arquivo.");
-            registry.add(entry);
+            }
+            try {
+                registry.add(entry);
+            }
+            catch (IOException failure) {
+                target.delete();
+                if (previous && !backup.renameTo(target))
+                    throw new IOException("Falha ao restaurar versão anterior.", failure);
+                throw failure;
+            }
+            if (previous && !backup.delete())
+                android.util.Log.w("VeloWinRuntime", "Backup antigo não removido.");
             return target;
         }
         catch (Exception error) {
