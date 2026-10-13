@@ -2,6 +2,14 @@
 
 **VeloWin** é um aplicativo Android independente para gerenciamento de jogos Windows e desenvolvimento de uma pilha de compatibilidade sem depender do código do Winlator. A experiência privilegia biblioteca simples, perfis automáticos, diagnóstico integrado e recursos avançados opcionais — inspiração de usabilidade em apps como GameHub, mas com código, marca e UI próprios.
 
+## VeloWin 0.8.0-dev — diagnóstico guiado + X11 e áudio externos (opcionais)
+
+A **main** passa a incluir o comando guiado `diagnose` no console Bionic. O VeloWin executa sequencialmente Box64, Wine, preparação de Wineprefix, CMD e um teste Win32 próprio, mostrando a **primeira etapa que falhou**. A confirmação do teste Win32 exige código de saída 0 e um marcador exato, sem timeout/cancelamento.
+
+Também é possível configurar por contêiner uma **ponte X11 local em TCP** para um servidor externo no próprio Android (`127.0.0.1:6000` / `:6001` / `:6002`) e **PulseAudio local** (`127.0.0.1:4713`), além de testar a acessibilidade das portas. É opt-in: VeloWin **não inclui XServer nem fornece janelas Windows na Surface**. Essa melhoria prepara testes gráficos **com outro servidor X11 já em execução**; não habilita jogos 3D automaticamente.
+
+Veja o guia [Contêiner e pontes locais v0.8](docs/CONTAINER_TEST_V08.md). Artefato de CI: `velowin-v08-bionic-bridge-debug`. Os APKs da v0.7 aparecem no histórico abaixo.
+
 ## VeloWin 0.7.0-dev — entrar no contêiner Bionic e testar Wine no Android
 
 O APK principal mantém **Box64 Bionic incluído**. Na **Biblioteca**, cada jogo agora oferece **Entrar no contêiner**. Na aba **Runtimes**, há um contêiner de diagnóstico independente que também pode preparar um Wineprefix e testar Win32 sem importar jogo.
@@ -63,7 +71,7 @@ Veja [Prefixos e perfis](docs/PROFILES_AND_PREFIXES.md) e [projeto do motor Bion
 
 ## APKs pelo GitHub Actions
 
-- **[VeloWin Android](https://github.com/danilo631/VeloWin/actions/workflows/android.yml)**: testes Java/Python, JNI Vulkan e APK debug padrão, artefato `velowin-v07-container-box64-debug`.
+- **[VeloWin Android](https://github.com/danilo631/VeloWin/actions/workflows/android.yml)**: testes Java/Python, JNI Vulkan e APK debug padrão, artefato `velowin-v08-bionic-bridge-debug`.
 - **[Experimental Box64 Bionic Integration](https://github.com/danilo631/VeloWin/actions/workflows/box64-bionic.yml)**: compila Box64 upstream para AArch64/Bionic, confere ABI, insere `libvelobox64.so` e produz sob demanda o artefato `velowin-box64-standalone-diagnostic`; o APK principal já contém Box64.
 - **[Verify Bionic Proton WCP Layout](https://github.com/danilo631/VeloWin/actions/workflows/bionic-wcp-inspect.yml)**: confere checksum de um release GameNative real, tipo Zstandard/TAR, perfil e layouts. Não executa binários desconhecidos.
 
