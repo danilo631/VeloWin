@@ -56,11 +56,32 @@ public final class LocalBridgeManager {
         }catch(IOException | SecurityException failure) {return false;}
     }
 
+    public static String inspectX11(int port) {
+        if(port<6000 || port>6009)return "DISPLAY fora do intervalo permitido.";
+        try(Socket client=new Socket()) {
+            client.connect(new InetSocketAddress("127.0.0.1",port),900);
+            client.setSoTimeout(1200);
+            client.getOutputStream().write(X11Protocol.setupRequest());
+            client.getOutputStream().flush();
+            byte[] header=new byte[8];
+            int read=0;
+            while(read<header.length) {
+                int n=client.getInputStream().read(header,read,header.length-read);
+                if(n<0)break;
+                read+=n;
+            }
+            return X11Protocol.description(X11Protocol.parseReply(
+                read==header.length?header:null));
+        }catch(IOException | SecurityException failure){
+            return "Servidor X11 TCP indisponível em 127.0.0.1:"+port+".";
+        }
+    }
+
     public static String probe(BridgeProfile profile) {
         StringBuilder b=new StringBuilder("Pontes TCP locais — sem autenticar protocolos:\n");
         if(profile.x11Enabled()) {
             b.append("X11 127.0.0.1:").append(profile.x11Port())
-                .append(": ").append(isListening(profile.x11Port())?"PORTA ACESSÍVEL":"SEM SERVIDOR")
+                .append(": ").append(inspectX11(profile.x11Port()))
                 .append("\n");
         }else b.append("X11: desativado\n");
         if(profile.pulseAudio) {
@@ -68,7 +89,7 @@ public final class LocalBridgeManager {
                 .append(isListening(profile.pulsePort())?"PORTA ACESSÍVEL":"SEM SERVIDOR")
                 .append("\n");
         }else b.append("PulseAudio: desativado\n");
-        b.append("Porta TCP aberta não comprova X11, som Win32 ou jogos. ")
+        b.append("Handshake X11 não comprova janelas Wine, som Win32 ou jogos. ")
             .append("Use apenas servidores locais que você controla.");
         return b.toString();
     }
