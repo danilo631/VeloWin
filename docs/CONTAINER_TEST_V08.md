@@ -7,7 +7,7 @@ O APK principal continua compilando **Box64 Bionic ARM64** do commit upstream fi
 1. **Diagnóstico guiado** (`diagnose`): testa sequencialmente **Box64 -v → Wine --version → template de Wineprefix → Wine cmd /c ver → Win32 Smoke**. Cada etapa usa processo real e código de saída. O teste Win32 só recebe confirmação se o processo terminar com código 0, sem cancelar/expirar, e produzir a linha exata `VELO_WIN32_SMOKE_OK`.
 2. **Ponte local X11 opcional**: configuração de `DISPLAY=127.0.0.1:0`, `:1` ou `:2`, habilitada por sessão. Exige **servidor X11 TCP externo** em execução **no mesmo telefone**. VeloWin não contém um servidor de janelas X11 e não mostra janelas Wine internamente.
 3. **Ponte local PulseAudio opcional**: envia `PULSE_SERVER=tcp:127.0.0.1:4713` ao processo Wine. Exige servidor PulseAudio externo em execução. O teste AudioTrack integrado ao Android **não** equivale a uma ponte Wine/Windows.
-4. **Teste de portas** (`bridge status`): verifica conexões TCP de loopback com timeout curto. Uma porta aberta **não** confirma autenticação/protocolo X11/PulseAudio nem compatibilidade com Win32.
+4. **Teste de portas** (`bridge status`): verifica o handshake X11 versão 11, distinguindo aceitação, recusa e autenticação, além de checar o acesso TCP do PulseAudio. Isso não demonstra janelas Wine ou compatibilidade com Win32.
 5. As opções X11/áudio são persistidas em preferências privadas por contêiner; nenhum host remoto arbitrário é aceito. Um contêiner sem jogo usa suas próprias preferências separadas das de cada jogo.
 6. **Console e logs** continuam restringindo comandos, exigindo consentimento para executar Wine/Win32 no teste guiado e oferecendo cancelamento e compartilhamento do diagnóstico.
 
@@ -28,7 +28,7 @@ Somente se você tiver instalado e iniciado um **servidor X11 compatível que ac
 
 1. Verifique em qual display o servidor escuta, por exemplo `:0` na porta TCP 6000 ou `:1` na porta 6001.
 2. No console do VeloWin, toque **Configurar X11 local** e escolha o display correspondente.
-3. Pressione **Testar portas locais**. O teste apenas verifica se há uma conexão TCP possível.
+3. Pressione **Testar portas locais**. Para X11 o teste envia um handshake versão 11 e informa se foi aceito, negado ou exige autenticação; nenhuma janela é criada.
 4. Caso seu servidor ofereça PulseAudio TCP em loopback na porta 4713, habilite separadamente **Áudio Pulse local**. Não habilite sem um serviço confiável.
 5. Use **CMD /c ver**, **Win32 Smoke** e, conscientemente, **Testar EXE** para observar comportamento. **Janelas só podem aparecer no servidor X11 externo**, nunca diretamente no console do VeloWin nesta versão.
 
