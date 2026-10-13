@@ -1462,12 +1462,12 @@ public final class MainActivity extends Activity {
         return count;
     }
 
-    private String getVersionName() { return "0.7.0-dev"; }
+    private String getVersionName() { return "0.8.0-dev"; }
 
     private void renderAbout() {
         section("Sobre o VeloWin", "Uma plataforma Android original, aberta e modular.");
         LinearLayout card = card();
-        add(card, "VeloWin 0.7.0-dev", 18, WHITE, true, 7);
+        add(card, "VeloWin 0.8.0-dev", 18, WHITE, true, 7);
         add(card, "Interface própria, biblioteca com favoritos e inspeção PE, "
             + "diagnóstico gráfico/térmico, downloads SHA-256 e extração segura "
             + "de arquivos Wine. O motor de execução continua em desenvolvimento.", 13, MUTED, false, 10);
