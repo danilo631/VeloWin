@@ -26,7 +26,10 @@ class ContainerLabContracts(unittest.TestCase):
         self.assertIn("BoundedProcess.run",core)
         self.assertIn("UUID.nameUUIDFromBytes",core)
         self.assertIn("if(diagnosticMode)",core)
-        self.assertIn("VELO_WIN32_SMOKE_OK",core)
+        self.assertIn("Win32ProbeVerdict.summary",core)
+        self.assertIn("Win32ProbeVerdict.passed",core)
+        verdict=(APP/"engine/Win32ProbeVerdict.java").read_text()
+        self.assertIn("VELO_WIN32_SMOKE_OK",verdict)
         self.assertIn("ctx.getAssets().open(\"velowin-smoke.exe\")",core)
         self.assertIn("BionicWineInstaller.installed",core)
         self.assertIn("WinePrefixManager.templateReady",core)
@@ -42,5 +45,5 @@ class ContainerLabContracts(unittest.TestCase):
         for needle in ("Compartilhar log","Cancelar teste","Testar Win32","wineserver",
                        "requiresConsent","ContainerCommand.Action.PREFIX_PREPARE","setPositiveButton"):
             self.assertIn(needle,ui)
-        self.assertIn("versionName '0.7.0-dev'",
+        self.assertIn("versionName '0.8.0-dev'",
             (ROOT/"app/build.gradle").read_text())
