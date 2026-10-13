@@ -58,6 +58,10 @@ public final class ContainerSession {
         }
     }
 
+    public String sessionId() { return game.id; }
+
+    public BridgeProfile bridges() { return LocalBridgeManager.get(ctx,game.id); }
+
     public BionicRelease selectedWine() {
         GameRuntimeChoice choice=GameRuntimeChoice.fromStored(
             game==null?"":game.runtimeTag);
@@ -94,7 +98,8 @@ public final class ContainerSession {
             if(e!=null)out.append(WinePrefixManager.status(ctx,game,e));
             else out.append("indisponível");
         }
-        out.append("\nPonte Wine/X11: não integrada")
+        out.append("\nPonte local opt-in:\n").append(bridges().summary())
+            .append("\nPonte Wine/X11 nativa: não integrada")
             .append("\nÁudio Win32: não integrado")
             .append("\nControles Win32: não integrados")
             .append("\nDirect3D/DXVK: não integrado")
@@ -124,6 +129,8 @@ public final class ContainerSession {
         switch(action) {
             case HELP: return ContainerCommand.manual();
             case STATUS: return status();
+            case BRIDGE_PROBE: return LocalBridgeManager.probe(bridges());
+            case DIAGNOSE: return runGuided(cancelled,feedback);
             case FILES: return files();
             case PREFIX_STATUS:
                 // O contêiner de diagnóstico também tem seu próprio Wineprefix.
@@ -166,14 +173,15 @@ public final class ContainerSession {
                 BionicRelease smokeWine=needWine();
                 needPrefix(smokeWine);
                 File executable=ownSmokeBinary(cancelled);
-                String smokeReport=probe(wineCommand(smokeWine,executable.getAbsolutePath()),
-                    environment(smokeWine,true),25000,cancelled,"VeloWin Win32 Smoke (x86_64)");
-                boolean passed=smokeReport.contains("Código 0 /")
-                    && smokeReport.contains("VELO_WIN32_SMOKE_OK")
-                    && !smokeReport.contains("Tempo limite");
-                return (passed?"TESTE WIN32 PASSOU: marcador e código 0.\n"
-                    :"TESTE WIN32 NÃO VALIDADO: conferir processo, libs e saída.\n")
-                    +smokeReport+"\nIsto não comprova renderização de jogos.";
+                BoundedProcess.Result smokeResult=runProbe(
+                    wineCommand(smokeWine,executable.getAbsolutePath()),
+                    environment(smokeWine,true),25000,cancelled);
+                boolean passed=Win32ProbeVerdict.passed(smokeResult.code,
+                    smokeResult.timeout,smokeResult.cancelled,smokeResult.output);
+                return Win32ProbeVerdict.summary(smokeResult.code,smokeResult.timeout,
+                    smokeResult.cancelled,smokeResult.output)+"\n"
+                    +probeReport(smokeResult,"VeloWin Win32 Smoke (x86_64)")
+                    +"\nIsto não comprova renderização de jogos.";
             case RUN_EXE:
                 if(diagnosticMode)
                     throw new IOException("Para executar seu EXE, entre pelo jogo na Biblioteca.");
@@ -272,22 +280,88 @@ public final class ContainerSession {
         env.put("BOX64_LD_LIBRARY_PATH",
             new File(wineRoot,"lib/wine/x86_64-unix").getAbsolutePath()+":"
             +new File(wineRoot,"lib").getAbsolutePath());
+        // Opt-in: loopback only. An external local X11/PulseAudio server must exist.
+        env.putAll(bridges().environment());
         if(withPrefix)env.put("WINEPREFIX",needPrefix(release).getAbsolutePath());
         return env;
     }
 
-    private String probe(List<String> argv,Map<String,String> env,long timeout,
-        AtomicBoolean cancelled,String description) throws Exception {
-        File dir=BionicWorkspace.prepare(ctx);
-        BoundedProcess.Result result=BoundedProcess.run(argv,dir,
+    private BoundedProcess.Result runProbe(List<String> argv,Map<String,String> env,
+        long timeout,AtomicBoolean cancelled) throws Exception {
+        File work=BionicWorkspace.prepare(ctx);
+        return BoundedProcess.run(argv,work,
             env==null?Box64Tuning.environment(Box64Tuning.Preset.BALANCED):env,
             timeout,cancelled);
+    }
+
+    private String probeReport(BoundedProcess.Result result,String description) {
         String report=description+"\n"+result.summary()
             +"\nDiagnóstico: "+FailureClassifier.explain(result.output,result.code,result.timeout)
             +"\nEste resultado não comprova execução de jogos Windows.";
         if(result.timeout || result.cancelled)
             report+="\nAviso: processos Wine filhos podem permanecer; use wineserver -k.";
         return report;
+    }
+
+    private String probe(List<String> argv,Map<String,String> env,long timeout,
+        AtomicBoolean cancelled,String description) throws Exception {
+        return probeReport(runProbe(argv,env,timeout,cancelled),description);
+    }
+
+    /** A transparent manual wizard: never starts wineboot or imports an arbitrary EXE. */
+    private String runGuided(AtomicBoolean cancelled,Feedback feedback) throws Exception {
+        StringBuilder out=new StringBuilder("DIAGNÓSTICO GUIADO VELOWIN\n");
+        out.append("Pontes locais:\n").append(LocalBridgeManager.probe(bridges()))
+            .append("\n\n");
+        feedback.update("Etapa 1/5: inicializar Box64");
+        if(!Box64Smoke.bundled(ctx))
+            return out.append("BLOQUEIO: Box64 Bionic ausente no APK.").toString();
+        BoundedProcess.Result cpu=runProbe(Arrays.asList(box64().getAbsolutePath(),"-v"),
+            null,8000,cancelled);
+        out.append("1. Box64: ").append(cpu.summary()).append("\n");
+        if(!cpuGood(cpu))return out.append("PARADO: tradutor Box64 não iniciou.\n")
+            .append(FailureClassifier.explain(cpu.output,cpu.code,cpu.timeout)).toString();
+        if(cancelled.get())return out.append("Cancelado.").toString();
+        feedback.update("Etapa 2/5: verificar Wine Bionic");
+        BionicRelease wine;
+        try{ wine=needWine(); }
+        catch(Exception error){return out.append("2. Wine: NÃO DISPONÍVEL — ")
+            .append(error.getMessage()).toString();}
+        BoundedProcess.Result version=runProbe(wineCommand(wine,"--version"),
+            environment(wine,false),12000,cancelled);
+        out.append("2. Wine --version: ").append(version.summary()).append("\n");
+        if(!cpuGood(version))return out.append("PARADO: Wine Bionic falhou.\n")
+            .append(FailureClassifier.explain(version.output,version.code,version.timeout)).toString();
+        feedback.update("Etapa 3/5: preparar prefixo Windows isolado");
+        if(!WinePrefixManager.templateReady(ctx,game,wine))
+            WinePrefixManager.prepare(ctx,game,wine,cancelled,
+                count->feedback.update("Extraindo prefixo: "+count+" entradas"));
+        out.append("3. Template Wineprefix: PREPARADO; wineboot não foi executado.\n");
+        if(cancelled.get())return out.append("Cancelado.").toString();
+        feedback.update("Etapa 4/5: executar Wine cmd /c ver");
+        BoundedProcess.Result cmd=runProbe(wineCommand(wine,"cmd","/c","ver"),
+            environment(wine,true),22000,cancelled);
+        out.append("4. Wine CMD: ").append(cmd.summary()).append("\n");
+        if(!cpuGood(cmd))return out.append("PARADO: programa Wine CMD falhou.\n")
+            .append(FailureClassifier.explain(cmd.output,cmd.code,cmd.timeout)).toString();
+        feedback.update("Etapa 5/5: testar executável Win32 próprio");
+        File own=ownSmokeBinary(cancelled);
+        BoundedProcess.Result windows=runProbe(wineCommand(wine,own.getAbsolutePath()),
+            environment(wine,true),25000,cancelled);
+        out.append("5. Win32 Smoke: ").append(windows.summary()).append("\n")
+            .append(Win32ProbeVerdict.summary(windows.code,windows.timeout,
+                windows.cancelled,windows.output)).append("\n");
+        if(Win32ProbeVerdict.passed(windows.code,windows.timeout,
+            windows.cancelled,windows.output))
+            out.append("A pilha executou o PE de console VeloWin, mas não "
+                +"há prova de janelas, áudio, DXVK ou jogos.");
+        else out.append("Programa de teste Windows não foi validado. ")
+            .append(FailureClassifier.explain(windows.output,windows.code,windows.timeout));
+        return out.toString();
+    }
+
+    private static boolean cpuGood(BoundedProcess.Result result) {
+        return result.code==0 && !result.timeout && !result.cancelled;
     }
 
     /**
