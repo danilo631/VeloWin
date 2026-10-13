@@ -45,6 +45,7 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/GameSessionConfig.java \
             app/src/main/java/dev/velowin/app/engine/ContainerCommand.java \
             app/src/main/java/dev/velowin/app/engine/BridgeProfile.java \
+            app/src/main/java/dev/velowin/app/engine/X11Protocol.java \
             app/src/main/java/dev/velowin/app/engine/Win32ProbeVerdict.java \
             app/src/main/java/dev/velowin/app/engine/ControllerState.java \
             app/src/main/java/dev/velowin/app/hardware/GpuDriverPolicy.java \
@@ -66,6 +67,7 @@ jobs:
             tests/GameSessionConfigTest.java \
             tests/ContainerCommandTest.java \
             tests/BridgeProfileTest.java \
+            tests/X11ProtocolTest.java \
             tests/Win32ProbeVerdictTest.java \
             tests/ControllerStateTest.java \
             tests/GpuDriverPolicyTest.java \
@@ -87,6 +89,7 @@ jobs:
           java -ea -cp /tmp/velowin-tests GameSessionConfigTest
           java -ea -cp /tmp/velowin-tests ContainerCommandTest
           java -ea -cp /tmp/velowin-tests BridgeProfileTest
+          java -ea -cp /tmp/velowin-tests X11ProtocolTest
           java -ea -cp /tmp/velowin-tests Win32ProbeVerdictTest
           java -ea -cp /tmp/velowin-tests ControllerStateTest
           java -ea -cp /tmp/velowin-tests GpuDriverPolicyTest
