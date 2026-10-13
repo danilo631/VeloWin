@@ -28,12 +28,15 @@ public final class LocalBridgeManager {
     }
 
     public static BridgeProfile get(Context ctx,String sessionId) {
-        String id=key(sessionId);
-        SharedPreferences p=store(ctx);
-        int display=p.getInt(id+".display",-1);
-        boolean pulse=p.getBoolean(id+".pulse",false);
-        try { return BridgeProfile.of(display,pulse); }
-        catch(IllegalArgumentException ignored){return BridgeProfile.disabled();}
+        try {
+            String id=key(sessionId);
+            SharedPreferences p=store(ctx);
+            int display=p.getInt(id+".display",-1);
+            boolean pulse=p.getBoolean(id+".pulse",false);
+            return BridgeProfile.of(display,pulse);
+        }catch(IllegalArgumentException | ClassCastException ignored){
+            return BridgeProfile.disabled();
+        }
     }
 
     public static void put(Context ctx,String sessionId,BridgeProfile profile)
