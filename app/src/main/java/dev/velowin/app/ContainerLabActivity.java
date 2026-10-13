@@ -20,6 +20,8 @@ import android.widget.TextView;
 import dev.velowin.app.engine.ContainerCommand;
 import dev.velowin.app.engine.ContainerSession;
 import dev.velowin.app.engine.BionicWorkspace;
+import dev.velowin.app.engine.BridgeProfile;
+import dev.velowin.app.engine.LocalBridgeManager;
 import dev.velowin.app.library.Game;
 import dev.velowin.app.library.GameStore;
 
@@ -132,6 +134,19 @@ public final class ContainerLabActivity extends Activity {
             "Arquivos",ContainerCommand.Action.FILES);
         labelRow(actions,"Testar EXE",ContainerCommand.Action.RUN_EXE,
             "Encerrar Wine",ContainerCommand.Action.STOP_WIN_SERVER);
+        labelRow(actions,"Diagnóstico guiado",ContainerCommand.Action.DIAGNOSE,
+            "Testar portas locais",ContainerCommand.Action.BRIDGE_PROBE);
+        LinearLayout bridgeRow=new LinearLayout(this);
+        bridgeRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams bridgeParams=new LinearLayout.LayoutParams(-1,-2);
+        bridgeParams.topMargin=dp(7);
+        actions.addView(bridgeRow,bridgeParams);
+        Button x11=button("Configurar X11 local",this::configureX11,false);
+        LinearLayout.LayoutParams xl=new LinearLayout.LayoutParams(0,-2,1f);
+        xl.rightMargin=dp(6);
+        bridgeRow.addView(x11,xl);
+        bridgeRow.addView(button("Áudio Pulse local",this::configurePulse,false),
+            new LinearLayout.LayoutParams(0,-2,1f));
 
         LinearLayout consoleArea=new LinearLayout(this);
         consoleArea.setOrientation(LinearLayout.VERTICAL);
@@ -191,12 +206,59 @@ public final class ContainerLabActivity extends Activity {
         bottom.addView(close,new LinearLayout.LayoutParams(0,-2,1f));
 
         setContentView(main);
-        append("VeloWin Console 0.7 · ARM64/Bionic\n"
+        append("VeloWin Console 0.8 · ARM64/Bionic\n"
             +"Este é um ambiente privado do aplicativo, não um contêiner Linux completo.\n"
             +"Comandos disponíveis: help\n\n");
         append(session.status()+"\n\n");
         if(game==null)append("Laboratório sem jogo: instale Wine Bionic em Runtimes, "
             +"execute prefix prepare e depois win32 test.\n");
+    }
+
+    private void configureX11() {
+        if(running){append("[Finalize o teste antes de alterar X11]\n");return;}
+        BridgeProfile old=session.bridges();
+        String[] displays={"Desativado (mais seguro)",
+            "Servidor X11 local :0 (TCP 6000)","Servidor X11 local :1 (TCP 6001)",
+            "Servidor X11 local :2 (TCP 6002)"};
+        int checked=old.display<0?0:Math.min(old.display+1,3);
+        new AlertDialog.Builder(this).setTitle("X11 experimental — só no próprio telefone")
+            .setMessage("Exige um servidor X11 TCP que você iniciou no Android. "
+                +"O VeloWin não instala nem inicia X11. X11 TCP pode permitir que "
+                +"outros processos locais leiam a interface; use só em um "
+                +"ambiente de teste confiável. Nenhuma porta remota é aceita.")
+            .setSingleChoiceItems(displays,checked,(dialog,choice)->{
+                int display=choice-1;
+                try {
+                    LocalBridgeManager.put(this,session.sessionId(),
+                        BridgeProfile.of(display,old.pulseAudio));
+                    append("\n[Ponte X11] "+session.bridges().summary()+"\n");
+                }catch(Exception e){append("\n[Erro na configuração X11] "+e.getMessage()+"\n");}
+                dialog.dismiss();
+            }).setNegativeButton("Cancelar",null).show();
+    }
+
+    private void configurePulse() {
+        if(running){append("[Finalize o teste antes de alterar áudio]\n");return;}
+        BridgeProfile old=session.bridges();
+        new AlertDialog.Builder(this).setTitle("PulseAudio TCP local")
+            .setMessage("Esta opção só configura PULSE_SERVER para o endereço "
+                +"127.0.0.1:4713. Exige um servidor PulseAudio externo, "
+                +"já iniciado por você. AudioTrack do Android sozinho não "
+                +"recebe áudio do Wine.")
+            .setNegativeButton("Cancelar",null)
+            .setNeutralButton("Desativar",(dialog,which)->persistBridge(
+                BridgeProfile.of(old.display,false)))
+            .setPositiveButton("Ativar",(dialog,which)->persistBridge(
+                BridgeProfile.of(old.display,true))).show();
+    }
+
+    private void persistBridge(BridgeProfile profile) {
+        try {
+            LocalBridgeManager.put(this,session.sessionId(),profile);
+            append("\n[Ponte local atualizada]\n"+session.bridges().summary()+"\n");
+        } catch(IOException error) {
+            append("\n[Falha ao salvar ponte local] "+error.getMessage()+"\n");
+        }
     }
 
     private void submitInput() {
@@ -221,7 +283,13 @@ public final class ContainerLabActivity extends Activity {
             transcript.setLength(0);screen.setText("");return;
         }
         if(ContainerCommand.requiresConsent(action)) {
-            String prompt=action==ContainerCommand.Action.WIN32_SMOKE
+            String prompt=action==ContainerCommand.Action.DIAGNOSE
+                ? "Executará uma sequência de testes reais Box64, Wine Bionic, "
+                  +"preparação do template Wineprefix, Wine CMD e programa "
+                  +"Win32 próprio do VeloWin. Não inicia wineboot, não executa "
+                  +"jogos importados e pode modificar somente o prefixo privado "
+                  +"do contêiner. A conexão X11 externa só será usada quando ativada."
+                :action==ContainerCommand.Action.WIN32_SMOKE
                 ? "Executará um pequeno programa Win32 do próprio VeloWin, compilado "
                   +"no GitHub Actions, via Wine Bionic e Box64. Ele escreve um marcador "
                   +"de sucesso no console. Não abre janela, testa GPU ou inicia jogos."
@@ -237,7 +305,9 @@ public final class ContainerLabActivity extends Activity {
                   +"tem limite de 30 segundos, mas wineserver pode permanecer "
                   +"ativo; use Encerrar Wine depois.";
             new AlertDialog.Builder(this)
-                .setTitle(action==ContainerCommand.Action.RUN_EXE
+                .setTitle(action==ContainerCommand.Action.DIAGNOSE
+                    ?"Executar diagnóstico guiado?"
+                    :action==ContainerCommand.Action.RUN_EXE
                     ?"Testar executável Windows?":action==ContainerCommand.Action.WIN32_SMOKE
                     ?"Executar teste Win32 do VeloWin?":"Executar wineboot?")
                 .setMessage(prompt)
