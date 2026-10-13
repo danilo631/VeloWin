@@ -10,6 +10,8 @@ public class ContainerCommandTest {
         ok(ContainerCommand.parse("wine cmd /c ver") == ContainerCommand.Action.CMD_VERSION,"cmd");
         ok(ContainerCommand.parse("wineboot -u") == ContainerCommand.Action.WINEBOOT,"boot");
         ok(ContainerCommand.parse("run exe") == ContainerCommand.Action.RUN_EXE,"exe");
+        ok(ContainerCommand.parse("diagnose") == ContainerCommand.Action.DIAGNOSE,"wizard");
+        ok(ContainerCommand.parse("bridge status") == ContainerCommand.Action.BRIDGE_PROBE,"bridge");
         ok(ContainerCommand.parse("win32 test") == ContainerCommand.Action.WIN32_SMOKE,"win32");
         ok(ContainerCommand.parse("wine cmd /c del c:\\\\*") == null,"shell-like denied");
         ok(ContainerCommand.parse("rm -rf /") == null,"shell denied");
@@ -19,6 +21,8 @@ public class ContainerCommandTest {
         ok(ContainerCommand.requiresConsent(ContainerCommand.Action.RUN_EXE),"exe consent");
         ok(ContainerCommand.requiresConsent(ContainerCommand.Action.WIN32_SMOKE),"win32 consent");
         ok(ContainerCommand.requiresConsent(ContainerCommand.Action.WINEBOOT),"boot consent");
+        ok(ContainerCommand.requiresConsent(ContainerCommand.Action.DIAGNOSE),"guided tests consent");
+        ok(!ContainerCommand.requiresConsent(ContainerCommand.Action.BRIDGE_PROBE),"port check only");
         ok(!ContainerCommand.requiresConsent(ContainerCommand.Action.WINE_VERSION),"version no consent");
         ok(ContainerCommand.manual().contains("wineserver -k"),"documented");
         System.out.println("ContainerCommandTest PASS");
