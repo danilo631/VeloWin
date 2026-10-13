@@ -11,7 +11,7 @@ class VeloWinV06Contracts(unittest.TestCase):
         self.assertIn("libvelobox64.so", workflow)
         self.assertIn("llvm-readelf", workflow)
         self.assertIn("Confirm APK contains executable Box64", workflow)
-        self.assertIn("velowin-v07-container-box64-debug", workflow)
+        self.assertIn("velowin-v08-bionic-bridge-debug", workflow)
 
     def test_native_driver_smoke_is_not_render_claim(self):
         native = (ROOT / "app/src/main/cpp/vulkan_wsi.c").read_text()
