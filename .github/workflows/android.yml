@@ -44,6 +44,8 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/PrefixArchivePath.java \
             app/src/main/java/dev/velowin/app/engine/GameSessionConfig.java \
             app/src/main/java/dev/velowin/app/engine/ContainerCommand.java \
+            app/src/main/java/dev/velowin/app/engine/BridgeProfile.java \
+            app/src/main/java/dev/velowin/app/engine/Win32ProbeVerdict.java \
             app/src/main/java/dev/velowin/app/engine/ControllerState.java \
             app/src/main/java/dev/velowin/app/hardware/GpuDriverPolicy.java \
             app/src/main/java/dev/velowin/app/runtime/BionicReleasePolicy.java \
@@ -63,6 +65,8 @@ jobs:
             tests/PrefixArchivePathTest.java \
             tests/GameSessionConfigTest.java \
             tests/ContainerCommandTest.java \
+            tests/BridgeProfileTest.java \
+            tests/Win32ProbeVerdictTest.java \
             tests/ControllerStateTest.java \
             tests/GpuDriverPolicyTest.java \
             tests/BionicReleasePolicyTest.java
@@ -82,6 +86,8 @@ jobs:
           java -ea -cp /tmp/velowin-tests PrefixArchivePathTest
           java -ea -cp /tmp/velowin-tests GameSessionConfigTest
           java -ea -cp /tmp/velowin-tests ContainerCommandTest
+          java -ea -cp /tmp/velowin-tests BridgeProfileTest
+          java -ea -cp /tmp/velowin-tests Win32ProbeVerdictTest
           java -ea -cp /tmp/velowin-tests ControllerStateTest
           java -ea -cp /tmp/velowin-tests GpuDriverPolicyTest
           java -ea -cp /tmp/velowin-tests BionicReleasePolicyTest
@@ -167,7 +173,7 @@ jobs:
       - name: Upload Box64 audit
         uses: actions/upload-artifact@v4
         with:
-          name: velowin-v07-container-box64-elf-audit
+          name: velowin-v08-bionic-elf-audit
           path: |
             /tmp/velowin-box64-audit.txt
             /tmp/velowin-Box64-LICENSE.txt
@@ -177,7 +183,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: velowin-v07-container-box64-debug
+          name: velowin-v08-bionic-bridge-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
