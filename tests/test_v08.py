@@ -13,6 +13,8 @@ class VeloWinV08Test(unittest.TestCase):
         probe=(APP/"engine/LocalBridgeManager.java").read_text()
         self.assertIn('new InetSocketAddress("127.0.0.1",port)',probe)
         self.assertIn('client.connect',probe)
+        self.assertIn("X11Protocol.setupRequest()",probe)
+        self.assertIn("X11Protocol.parseReply",probe)
         self.assertIn('getSharedPreferences',probe)
 
     def test_guided_real_processes(self):
