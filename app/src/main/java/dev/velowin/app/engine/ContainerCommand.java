@@ -10,7 +10,8 @@ import java.util.Locale;
 public final class ContainerCommand {
     public enum Action {
         HELP, STATUS, CLEAR, BOX64_VERSION, WINE_VERSION, PREFIX_PREPARE,
-        PREFIX_STATUS, WINEBOOT, CMD_VERSION, WIN32_SMOKE, RUN_EXE, STOP_WIN_SERVER, FILES
+        PREFIX_STATUS, WINEBOOT, CMD_VERSION, WIN32_SMOKE, RUN_EXE, STOP_WIN_SERVER, FILES,
+        BRIDGE_PROBE, DIAGNOSE
     }
 
     private ContainerCommand() {}
@@ -32,13 +33,15 @@ public final class ContainerCommand {
             case "run exe": case "testar exe": return Action.RUN_EXE;
             case "wineserver -k": case "stop": return Action.STOP_WIN_SERVER;
             case "files": case "arquivos": return Action.FILES;
+            case "bridge status": case "bridge test": case "testar pontes": return Action.BRIDGE_PROBE;
+            case "diagnose": case "diagnosticar": case "testes completos": return Action.DIAGNOSE;
             default: return null;
         }
     }
 
     public static boolean requiresConsent(Action action) {
         return action == Action.WINEBOOT || action == Action.RUN_EXE
-            || action == Action.WIN32_SMOKE;
+            || action == Action.WIN32_SMOKE || action == Action.DIAGNOSE;
     }
 
     public static String manual() {
@@ -55,6 +58,8 @@ public final class ContainerCommand {
             + "win32 test          — executável de teste do próprio VeloWin\n"
             + "run exe             — tentar EXE importado (confirmação)\n"
             + "wineserver -k       — solicitar encerramento do wineserver\n"
+            + "bridge status       — conferir pontes locais X11/PulseAudio\n"
+            + "diagnose            — sequência guiada Box64/Wine/Win32\n"
             + "clear               — limpar console\n\n"
             + "Não há shell Linux nem comandos arbitrários. Programas Windows "
             + "ainda podem falhar por falta de X11, áudio e outras bibliotecas.";
