@@ -1,0 +1,58 @@
+# Build the real upstream Xorg/NDK engine as a standalone integration artifact.
+# This does NOT silently wire the resulting library to VeloWin's Wine process.
+name: Investigate embedded X11 NDK upstream
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upstream-lorie-ndk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout VeloWin integration plan
+        uses: actions/checkout@v4
+      - name: Set up JDK 21 for current Termux X11 Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install build dependencies for Xorg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bison flex python3 ninja-build pkg-config cmake autoconf automake libtool
+      - name: Clone pinned Termux X11 GPLv3 sources and recursive dependencies
+        run: |
+          git clone --no-checkout https://github.com/termux/termux-x11.git /tmp/velowin-termux-x11
+          cd /tmp/velowin-termux-x11
+          git checkout fa3a8b430e2896a19f44c99a9cb056254615ae06
+          git submodule update --init --recursive --jobs 4
+          git rev-parse HEAD | tee /tmp/termux-x11-upstream-commit.txt
+          cp LICENSE /tmp/termux-x11-LICENSE-GPL3.txt
+      - name: Compile standalone Termux X11 Android library with NDK
+        working-directory: /tmp/velowin-termux-x11
+        run: |
+          chmod +x gradlew
+          ./gradlew :lorie:assembleDebug --no-daemon --stacktrace
+      - name: Audit ELF ARM64 and keep upstream license
+        run: |
+          set -e
+          AAR=$(find /tmp/velowin-termux-x11/lorie/build/outputs/aar -name '*debug.aar' -type f | head -1)
+          test -n "$AAR"
+          mkdir -p /tmp/velowin-x11-ndk-artifact
+          cp "$AAR" /tmp/velowin-x11-ndk-artifact/lorie-debug.aar
+          cp /tmp/termux-x11-upstream-commit.txt /tmp/velowin-x11-ndk-artifact/
+          cp /tmp/termux-x11-LICENSE-GPL3.txt /tmp/velowin-x11-ndk-artifact/
+          unzip -p "$AAR" jni/arm64-v8a/libXlorie.so > /tmp/velowin-x11-ndk-artifact/libXlorie.so
+          test -s /tmp/velowin-x11-ndk-artifact/libXlorie.so
+          file /tmp/velowin-x11-ndk-artifact/libXlorie.so | tee /tmp/velowin-x11-ndk-artifact/elf-audit.txt
+          readelf -h /tmp/velowin-x11-ndk-artifact/libXlorie.so >> /tmp/velowin-x11-ndk-artifact/elf-audit.txt
+          sha256sum /tmp/velowin-x11-ndk-artifact/* > /tmp/velowin-x11-ndk-artifact/SHA256SUMS.txt
+      - name: Upload standalone Xorg NDK integration reference
+        uses: actions/upload-artifact@v4
+        with:
+          name: velowin-x11-upstream-lorie-reference
+          path: /tmp/velowin-x11-ndk-artifact/
+          retention-days: 14
