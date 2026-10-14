@@ -126,6 +126,8 @@ public final class ContainerLabActivity extends Activity {
         main.addView(actions);
         labelRow(actions,"Status",ContainerCommand.Action.STATUS,
             "Box64 -v",ContainerCommand.Action.BOX64_VERSION);
+        labelRow(actions,"Auditar Wine",ContainerCommand.Action.WINE_PREFLIGHT,
+            "Status do prefixo",ContainerCommand.Action.PREFIX_STATUS);
         labelRow(actions,"Wine --version",ContainerCommand.Action.WINE_VERSION,
             "Preparar prefixo",ContainerCommand.Action.PREFIX_PREPARE);
         labelRow(actions,"CMD /c ver",ContainerCommand.Action.CMD_VERSION,
