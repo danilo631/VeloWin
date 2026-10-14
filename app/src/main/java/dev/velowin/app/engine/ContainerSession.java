@@ -172,6 +172,20 @@ public final class ContainerSession {
                     30000,cancelled,"Wineboot -u (experimental)")
                     +"\nPode ser necessário encerrar wineserver -k. "
                     +"Não há servidor X11 embutido.";
+            case X11_WINDOW_PROBE:
+                if(!bridges().x11Enabled())
+                    throw new IOException("Selecione uma ponte X11 local antes de abrir janelas.");
+                if(LocalBridgeManager.inspectX11(bridges().x11Port())
+                    .indexOf("aceitou handshake")<0)
+                    throw new IOException("Servidor X11 não confirmou o protocolo. "
+                        +"Verifique XServer local, porta e autenticação.");
+                BionicRelease guiWine=needWine();
+                needPrefix(guiWine);
+                return probe(wineCommand(guiWine,"notepad"),
+                    environment(guiWine,true),30000,cancelled,
+                    "Wine notepad / X11 externo (janela não verificada por Surface)")
+                    +"\nEste teste exige servidor X11 real já iniciado. "
+                    +"Uma resposta TCP não confirma que a janela apareceu.";
             case WIN32_SMOKE:
                 BionicRelease smokeWine=needWine();
                 needPrefix(smokeWine);
