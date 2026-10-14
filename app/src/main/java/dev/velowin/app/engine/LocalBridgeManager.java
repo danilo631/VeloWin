@@ -56,8 +56,8 @@ public final class LocalBridgeManager {
         }catch(IOException | SecurityException failure) {return false;}
     }
 
-    public static String inspectX11(int port) {
-        if(port<6000 || port>6009)return "DISPLAY fora do intervalo permitido.";
+    public static X11Protocol.Reply handshakeX11(int port) {
+        if(port<6000 || port>6009)return X11Protocol.Reply.NOT_X11;
         try(Socket client=new Socket()) {
             client.connect(new InetSocketAddress("127.0.0.1",port),900);
             client.setSoTimeout(1200);
@@ -70,11 +70,15 @@ public final class LocalBridgeManager {
                 if(n<0)break;
                 read+=n;
             }
-            return X11Protocol.description(X11Protocol.parseReply(
-                read==header.length?header:null));
+            return X11Protocol.parseReply(read==header.length?header:null);
         }catch(IOException | SecurityException failure){
-            return "Servidor X11 TCP indisponível em 127.0.0.1:"+port+".";
+            return X11Protocol.Reply.NOT_X11;
         }
+    }
+
+    public static String inspectX11(int port) {
+        if(port<6000 || port>6009)return "DISPLAY fora do intervalo permitido.";
+        return X11Protocol.description(handshakeX11(port));
     }
 
     public static String probe(BridgeProfile profile) {
