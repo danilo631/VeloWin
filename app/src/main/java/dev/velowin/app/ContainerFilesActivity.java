@@ -32,6 +32,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -164,7 +166,15 @@ public final class ContainerFilesActivity extends Activity {
             if(game==null)throw new IOException("Jogo não encontrado na biblioteca.");
         }
         ContainerSession session=new ContainerSession(this,game);
-        String id=session.sessionId(); // Canonical, VeloWin-generated UUID.
+        String id=session.sessionId();
+        // GameStore is persistent user data, not a trusted filesystem path.
+        try {
+            UUID uuid=UUID.fromString(id);
+            if(!uuid.toString().equals(id.toLowerCase(Locale.ROOT)))
+                throw new IllegalArgumentException("UUID não canônico.");
+        }catch(IllegalArgumentException error){
+            throw new IOException("Identificador do contêiner inválido.",error);
+        }
         File workspace=BionicWorkspace.prepare(this);
         roots.put("workspace",new Root(workspace,true));
 
