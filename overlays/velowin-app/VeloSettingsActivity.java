@@ -71,6 +71,22 @@ public final class VeloSettingsActivity extends Activity {
         super.onCreate(state);
         manager=new ContainerManager(this);
         int id=getIntent().getIntExtra(CONTAINER_ID,-1);
+        if(id<0){
+            java.util.List<Container> available=manager.getContainers();
+            if(available==null||available.isEmpty()){
+                message("Nenhum contêiner","Crie um contêiner na Home do VeloWin.");
+                finish();return;
+            }
+            String[] names=new String[available.size()];
+            for(int i=0;i<available.size();i++)
+                names[i]=available.get(i).getName()+" (#"+available.get(i).id+")";
+            new AlertDialog.Builder(this).setTitle("Escolha o contêiner")
+                .setItems(names,(d,index)->{
+                    container=manager.getContainerById(available.get(index).id);
+                    if(container!=null)showSettings();else finish();
+                }).setOnCancelListener(d->finish()).show();
+            return;
+        }
         container=manager.getContainerById(id);
         if(container==null){
             message("Contêiner inexistente","O contêiner foi removido ou seu ID mudou.");
