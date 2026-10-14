@@ -142,6 +142,8 @@ public final class ContainerLabActivity extends Activity {
             "Encerrar Wine",ContainerCommand.Action.STOP_WIN_SERVER);
         labelRow(actions,"Diagnóstico guiado",ContainerCommand.Action.DIAGNOSE,
             "Testar portas locais",ContainerCommand.Action.BRIDGE_PROBE);
+        labelRow(actions,"Tentar janela Wine/X11",ContainerCommand.Action.X11_WINDOW_PROBE,
+            "Configurar X11",ContainerCommand.Action.BRIDGE_PROBE);
         LinearLayout bridgeRow=new LinearLayout(this);
         bridgeRow.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams bridgeParams=new LinearLayout.LayoutParams(-1,-2);
@@ -295,7 +297,13 @@ public final class ContainerLabActivity extends Activity {
             transcript.setLength(0);screen.setText("");return;
         }
         if(ContainerCommand.requiresConsent(action)) {
-            String prompt=action==ContainerCommand.Action.DIAGNOSE
+            String prompt=action==ContainerCommand.Action.X11_WINDOW_PROBE
+                ? "Será iniciado o Notepad do Wine no DISPLAY externo que você configurou. "
+                  +"Precisa de Wineprefix preparado e servidor X11 real aceitando handshake. "
+                  +"Não existe XServer embutido no VeloWin; após 30 segundos o processo "
+                  +"direto será encerrado, mas filhos Wine podem persistir. "
+                  +"Confirme visualmente a janela no servidor X11."
+                :action==ContainerCommand.Action.DIAGNOSE
                 ? "Executará uma sequência de testes reais Box64, Wine Bionic, "
                   +"preparação do template Wineprefix, Wine CMD e programa "
                   +"Win32 próprio do VeloWin. Não inicia wineboot, não executa "
@@ -319,6 +327,8 @@ public final class ContainerLabActivity extends Activity {
             new AlertDialog.Builder(this)
                 .setTitle(action==ContainerCommand.Action.DIAGNOSE
                     ?"Executar diagnóstico guiado?"
+                    :action==ContainerCommand.Action.X11_WINDOW_PROBE
+                    ?"Testar primeira janela Wine/X11?"
                     :action==ContainerCommand.Action.RUN_EXE
                     ?"Testar executável Windows?":action==ContainerCommand.Action.WIN32_SMOKE
                     ?"Executar teste Win32 do VeloWin?":"Executar wineboot?")
