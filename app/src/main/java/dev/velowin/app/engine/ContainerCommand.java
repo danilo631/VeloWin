@@ -11,7 +11,7 @@ public final class ContainerCommand {
     public enum Action {
         HELP, STATUS, CLEAR, BOX64_VERSION, WINE_VERSION, PREFIX_PREPARE,
         PREFIX_STATUS, WINEBOOT, CMD_VERSION, WIN32_SMOKE, RUN_EXE, STOP_WIN_SERVER, FILES,
-        BRIDGE_PROBE, DIAGNOSE
+        BRIDGE_PROBE, DIAGNOSE, WINE_PREFLIGHT
     }
 
     private ContainerCommand() {}
@@ -25,6 +25,7 @@ public final class ContainerCommand {
             case "clear": case "limpar": return Action.CLEAR;
             case "box64 -v": case "box64 --version": return Action.BOX64_VERSION;
             case "wine --version": case "wine -v": return Action.WINE_VERSION;
+            case "wine preflight": case "wine audit": return Action.WINE_PREFLIGHT;
             case "prefix prepare": case "preparar prefixo": return Action.PREFIX_PREPARE;
             case "prefix status": case "prefix": return Action.PREFIX_STATUS;
             case "wineboot -u": case "wineboot --init": return Action.WINEBOOT;
@@ -51,6 +52,7 @@ public final class ContainerCommand {
             + "files               — pastas privadas do contêiner\n"
             + "box64 -v            — executar tradutor Bionic\n"
             + "wine --version      — teste Wine + Box64\n"
+            + "wine preflight      — auditar ELF Bionic, wineserver e arquivos WCP\n"
             + "prefix prepare      — extrair template do contêiner atual\n"
             + "prefix status       — verificar prefixo\n"
             + "wineboot -u         — inicialização experimental Wine (confirmação)\n"
