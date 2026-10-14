@@ -88,6 +88,22 @@ do copyleft e entrega dos fontes correspondentes. O Winlator-app é
 LGPL-2.1 no arquivo principal, com dependências de licenças variadas.
 O VeloWin não alega ter importado fontes desses projetos nesta branch.
 
+## NDK XServer upstream — primeiro build reproduzível
+
+O workflow experimental `Investigate embedded X11 NDK upstream`
+(`.github/workflows/x11-upstream-ndk.yml`) baixa **o commit fixo**
+Termux:X11 `fa3a8b430e2896a19f44c99a9cb056254615ae06`,
+inicializa os submódulos Xorg/GitLab, utiliza a toolchain NDK do
+próprio projeto upstream e tenta compilar `:lorie:assembleDebug`.
+
+Se aprovado, publica `lorie-debug.aar`, `libXlorie.so`, SHA-256,
+aviso GPLv3 e relatório ELF. Este trabalho separa a **compilação efetiva**
+do XServer do desafio de colocar a biblioteca no mesmo UID/processo
+que o Wine do VeloWin, conectar `LorieView` à Surface e rotear teclado,
+mouse, gamepad e áudio. **Um AAR compilado ainda não integra servidor
+de janelas ao aplicativo principal.** Se a build falhar, seus logs
+identificam as dependências upstream que precisam ser adaptadas.
+
 ## Limitações reais
 
 - Instalar DXVK/VKD3D **não** substitui a GPU/driver do telefone.
