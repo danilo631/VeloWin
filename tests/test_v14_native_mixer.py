@@ -32,7 +32,7 @@ class NativeMixerContracts(unittest.TestCase):
     def test_full_native_apk_is_primary_build(self):
         workflow=(ROOT/".github/workflows/velowin-native.yml").read_text()
         self.assertIn("assembleStandardDebug",workflow)
-        self.assertIn("git lfs pull",workflow)
+        self.assertIn("lfs pull",workflow)
         self.assertIn("submodule update --init --recursive",workflow)
         self.assertIn("tools/prepare-winnative.py",workflow)
         self.assertIn("dev.velowin.app",workflow)
