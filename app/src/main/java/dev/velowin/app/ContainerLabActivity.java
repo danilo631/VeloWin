@@ -124,6 +124,10 @@ public final class ContainerLabActivity extends Activity {
         LinearLayout actions=new LinearLayout(this);
         actions.setOrientation(LinearLayout.VERTICAL);
         main.addView(actions);
+        Button explore=button("📁 Explorar arquivos do contêiner",this::openExplorer,true);
+        LinearLayout.LayoutParams exploreParams=new LinearLayout.LayoutParams(-1,-2);
+        exploreParams.bottomMargin=dp(8);
+        actions.addView(explore,exploreParams);
         labelRow(actions,"Status",ContainerCommand.Action.STATUS,
             "Box64 -v",ContainerCommand.Action.BOX64_VERSION);
         labelRow(actions,"Auditar Wine",ContainerCommand.Action.WINE_PREFLIGHT,
@@ -214,6 +218,12 @@ public final class ContainerLabActivity extends Activity {
         append(session.status()+"\n\n");
         if(game==null)append("Laboratório sem jogo: instale Wine Bionic em Runtimes, "
             +"execute prefix prepare e depois win32 test.\n");
+    }
+
+    private void openExplorer() {
+        Intent intent=new Intent(this,ContainerFilesActivity.class);
+        if(game!=null)intent.putExtra("game_id",game.id);
+        startActivity(intent);
     }
 
     private void configureX11() {
