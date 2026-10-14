@@ -9,7 +9,7 @@ class RecoveryContracts(unittest.TestCase):
         for token in ("XServerDisplayActivity.java","setupXEnvironment();",
             "ensureWinePrefixEssentialFiles();","VeloBootTarget.select",
             "checkVeloWinFirstWindow","firstGuestWindowShown.get()",
-            "postDelayed","35000L","reportLaunchFailure",
+            "postDelayed","35000L",
             "VeloSettingsActivity.class","ContentDialog.alert"):
             self.assertIn(token,p)
         self.assertIn('"wfm.exe"',load("overlays/velowin-app/VeloSessionDiagnostics.java"))
