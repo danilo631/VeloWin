@@ -22,6 +22,21 @@ Isso **não** comprova o build Android combinado da branch, nem Wine
 apresentado na Surface. Veja o resultado da própria branch v12 antes de
 anunciar APK funcional.
 
+## Transporte Unix do contêiner
+
+Foi acrescentado um perfil experimental **XServer VeloWin interno :0**:
+o ambiente Wine recebe `DISPLAY=:0` em vez de `127.0.0.1:0`, e
+`LocalBridgeManager.handshakeEmbeddedX11` usa um `LocalSocket` Android
+para interrogar o protocolo X11 em
+`bionic-workspace-v1/tmp/.X11-unix/X0`. O comando
+`wine notepad` só é autorizado após um handshake X11 real com
+resposta `ACCEPTED`. O teste é separado do TCP do XServer externo.
+
+**A biblioteca Lorie ainda não está sendo iniciada como servidor no mesmo
+UID.** Portanto selecionar :0 não cria magicamente o socket nem exibe uma
+janela; o probe deve acusar ausência até a inicialização Xorg estar
+implementada e validada.
+
 ## Arquitetura para o próximo nível de execução
 
 1. Isolar Xorg em processo Android dedicado para que `dix_main()` e seu
