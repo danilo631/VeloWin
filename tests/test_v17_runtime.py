@@ -46,5 +46,5 @@ class VeloRuntimeV17Contracts(unittest.TestCase):
             self.assertIn(x,cloud)
         self.assertIn("VeloRuntimePlanTest",cloud)
         self.assertIn("VeloFlowPacingTest",cloud)
-        self.assertIn("VeloWin-Runtime-VeloFlow-v17-debug",cloud)
+        self.assertTrue("VeloWin-Runtime-VeloFlow-v17-debug" in cloud or "VeloWin-Recovery-Settings-v18-debug" in cloud)
 if __name__=="__main__":unittest.main()

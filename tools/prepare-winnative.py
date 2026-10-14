@@ -83,7 +83,8 @@ def prepare(source: Path, overlay: Path):
     java_target = source / "app/src/main/app/velowin"
     java_target.mkdir(parents=True, exist_ok=True)
     for filename in ("VeloWinHomeActivity.java", "FrameGenPolicy.java", "MaliProfile.java",
-                     "VeloRuntimePlan.java", "VeloRuntimeBridge.java"):
+                     "VeloRuntimePlan.java", "VeloRuntimeBridge.java", "VeloBootTarget.java",
+                     "VeloSettingsActivity.java", "VeloSessionDiagnostics.java"):
         src = overlay_sources / filename
         if not src.is_file():
             fail("Missing original VeloWin UI module: " + filename)
@@ -110,7 +111,7 @@ def prepare(source: Path, overlay: Path):
                 + manifest[matched.end(2):])
     new_launcher = """
         <!-- Original VeloWin UI. Full Winlator-derived runtime remains a
-             source-linked library; advanced tools stay in UnifiedActivity. -->
+             source-linked engine; VeloWin Settings has its own controls. -->
         <activity
             android:name="com.winlator.cmod.velowin.VeloWinHomeActivity"
             android:exported="true"
@@ -121,6 +122,13 @@ def prepare(source: Path, overlay: Path):
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+"""
+    new_launcher += """
+        <activity
+            android:name="com.winlator.cmod.velowin.VeloSettingsActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="fullUser"/>
 """
     if manifest.count("</application>") != 1:
         fail("Android manifest application node changed.")
