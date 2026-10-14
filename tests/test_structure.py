@@ -10,7 +10,13 @@ class VeloWinFoundationTest(unittest.TestCase):
         manifest = ET.parse(BASE / "app/src/main/AndroidManifest.xml").getroot()
         uri = "{http://schemas.android.com/apk/res/android}"
         permissions = [e.attrib[uri + "name"] for e in manifest.findall("uses-permission")]
-        self.assertEqual(set(permissions), {"android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE"})
+        self.assertEqual(set(permissions), {"android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE",
+             "android.permission.REQUEST_INSTALL_PACKAGES"})
+        # Installer permission is used only by the user-approved official
+        # Termux:X11 APK flow, never for silent system package installation.
+        provider=(JAVA/"runtime/ComponentApkProvider.java").read_text()
+        self.assertIn('ParcelFileDescriptor.MODE_READ_ONLY',provider)
+        self.assertIn('ComponentStore.verifyApk',provider)
         app = manifest.find("application")
         self.assertEqual(app.attrib[uri + "usesCleartextTraffic"], "false")
         gradle = (BASE / "app/build.gradle").read_text()
