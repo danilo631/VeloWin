@@ -54,7 +54,7 @@ public final class ContainerFilesActivity extends Activity {
     private final LinkedHashMap<String,Root> roots=new LinkedHashMap<>();
     private ContainerFileBrowser browser;
     private static final int PICK_PRIVATE_FILE=4071;
-    private String selectedRoot="workspace", relative="";
+    private String selectedRoot="game", relative="";
     private String importRoot=null, importPath="";
     private int generation=0;
     private LinearLayout fileList,rootTabs;
@@ -106,12 +106,12 @@ public final class ContainerFilesActivity extends Activity {
             return;
         }
         if(savedState!=null) {
-            selectedRoot=savedState.getString("root","workspace");
+            selectedRoot=savedState.getString("root","game");
             relative=savedState.getString("relative","");
             importRoot=savedState.getString("importRoot");
             importPath=savedState.getString("importPath","");
         }
-        if(!roots.containsKey(selectedRoot)){selectedRoot="workspace";relative="";}
+        if(!roots.containsKey(selectedRoot)){selectedRoot="game";relative="";}
 
         LinearLayout page=new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
@@ -186,7 +186,7 @@ public final class ContainerFilesActivity extends Activity {
             throw new IOException("Identificador do contêiner inválido.",error);
         }
         File workspace=BionicWorkspace.prepare(this);
-        roots.put("workspace",new Root(workspace,true));
+        roots.put("workspace",new Root(workspace,false));
 
         File ownGame=new File(new File(workspace,"games"),id);
         if(!ownGame.isDirectory() && !ownGame.mkdirs())
@@ -328,7 +328,7 @@ public final class ContainerFilesActivity extends Activity {
         Root root=roots.get(selectedRoot);
         if(root==null || !root.writable) {
             new AlertDialog.Builder(this)
-                .setMessage("Selecione Workspace ou Jogo para importar arquivos.")
+                .setMessage("Selecione Jogo para importar arquivos. O workspace do motor é somente leitura.")
                 .setPositiveButton("OK",null).show();
             return;
         }
@@ -382,7 +382,7 @@ public final class ContainerFilesActivity extends Activity {
         Root target=roots.get(selectedRoot);
         if(target==null || !target.writable){
             new AlertDialog.Builder(this).setMessage(
-                "Esta área é somente leitura. Use Workspace ou Jogo para criar pastas.")
+                "Esta área é somente leitura. Use Jogo para criar pastas.")
                 .setPositiveButton("Entendi",null).show();
             return;
         }
