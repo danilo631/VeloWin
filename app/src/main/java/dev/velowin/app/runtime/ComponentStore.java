@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.GZIPInputStream;
+import com.github.luben.zstd.ZstdInputStream;
 import javax.net.ssl.HttpsURLConnection;
 
 /** Verified, app-private downloads. DXVK is staged, never injected in Wineprefix by download. */
@@ -39,8 +40,9 @@ public final class ComponentStore {
     }
     private static File root(Context ctx,ComponentRelease release)throws IOException {
         if(!ComponentReleasePolicy.valid(release))throw new IOException("Manifesto inválido.");
-        return new File(base(ctx),release.kind==ComponentRelease.Kind.DXVK?
-            "dxvk/"+release.tag:"termux-x11/"+release.tag);
+        String namespace=release.kind==ComponentRelease.Kind.DXVK?"dxvk"
+            :release.kind==ComponentRelease.Kind.VKD3D_PROTON?"vkd3d-proton":"termux-x11";
+        return new File(base(ctx),namespace+"/"+release.tag);
     }
     public static File apk(Context ctx,ComponentRelease release)throws IOException {
         if(release.kind!=ComponentRelease.Kind.TERMUX_X11_APK)
@@ -62,7 +64,10 @@ public final class ComponentStore {
                 return apk(ctx,release).isFile()
                     && apk(ctx,release).length()==release.size;
             // Validate actual PE DLL architecture, not just filenames.
-            for(String name:new String[]{"d3d9.dll","dxgi.dll","d3d11.dll"}) {
+            String[] required=release.kind==ComponentRelease.Kind.DXVK
+                ?new String[]{"d3d9.dll","dxgi.dll","d3d11.dll"}
+                :new String[]{"d3d12.dll"};
+            for(String name:required) {
                 File f=new File(folder,"x64/"+name);
                 try(InputStream in=new FileInputStream(f)){
                     if(!"x86_64".equals(PeInspector.inspect(in)))return false;
@@ -143,9 +148,9 @@ public final class ComponentStore {
                     throw new IOException("SHA-256 ou tamanho incorretos. Pacote rejeitado.");
             }finally{connection.disconnect();}
             if(cancelled.get())throw new IOException("Cancelado.");
-            if(release.kind==ComponentRelease.Kind.DXVK) {
+            if(release.kind!=ComponentRelease.Kind.TERMUX_X11_APK) {
                 progress.report("Extraindo DLLs Windows x86/x64...");
-                unpackDxvk(archive,staging,cancelled);
+                unpackGraphics(archive,staging,cancelled,release.kind);
                 if(!archive.delete())throw new IOException("Falha ao liberar arquivo TAR.");
             } else {
                 Files.move(archive.toPath(),new File(staging,release.name).toPath());
@@ -171,14 +176,15 @@ public final class ComponentStore {
         }
     }
     /** Only extract the five expected Direct3D DLL basenames in x32 and x64. */
-    private static void unpackDxvk(File archive,File folder,
-            AtomicBoolean cancelled)throws Exception {
+    private static void unpackGraphics(File archive,File folder,
+            AtomicBoolean cancelled,ComponentRelease.Kind kind)throws Exception {
         Set<String> seen=new HashSet<>();
         long bytes=0;
         int entries=0;
         try(InputStream source=new BufferedInputStream(new FileInputStream(archive));
-            GZIPInputStream gzip=new GZIPInputStream(source);
-            TarArchiveInputStream tar=new TarArchiveInputStream(gzip)){
+            InputStream unpack=kind==ComponentRelease.Kind.VKD3D_PROTON
+                ?new ZstdInputStream(source):new GZIPInputStream(source);
+            TarArchiveInputStream tar=new TarArchiveInputStream(unpack)){
             TarArchiveEntry member;
             byte[] buf=new byte[65536];
             while((member=tar.getNextEntry())!=null){
@@ -198,10 +204,15 @@ public final class ComponentStore {
                 if(!member.isFile())continue;
                 String[] parts=path.split("/");
                 if(parts.length<2)continue;
-                String arch=parts[parts.length-2],file=parts[parts.length-1];
+                String srcArch=parts[parts.length-2],file=parts[parts.length-1];
+                String arch=srcArch.equals("x86")?"x32":srcArch;
                 if(!("x32".equals(arch)||"x64".equals(arch)))continue;
                 boolean valid=false;
-                for(String dll:DLLS)if((dll+".dll").equals(file)){valid=true;break;}
+                if(kind==ComponentRelease.Kind.DXVK){
+                    for(String dll:DLLS)if((dll+".dll").equals(file)){valid=true;break;}
+                }else{
+                    valid="d3d12.dll".equals(file)||"d3d12core.dll".equals(file);
+                }
                 if(!valid)continue;
                 String key=arch+"/"+file;
                 if(!seen.add(key))throw new IOException("DLL duplicada no TAR.");
@@ -225,9 +236,11 @@ public final class ComponentStore {
                 }
             }
         }
-        for(String dll:new String[]{"d3d9","d3d11","dxgi"})
+        String[] required=kind==ComponentRelease.Kind.DXVK
+            ?new String[]{"d3d9","d3d11","dxgi"}:new String[]{"d3d12"};
+        for(String dll:required)
             if(!seen.contains("x64/"+dll+".dll"))
-                throw new IOException("Pacote DXVK sem DLL x64 obrigatória: "+dll);
+                throw new IOException("Pacote sem DLL x64 obrigatória: "+dll);
     }
 
     /** Only the exact manifest-authenticated directory may be removed. */
