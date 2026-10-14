@@ -153,7 +153,8 @@ public final class VeloWinHomeActivity extends Activity {
             :"FrameGen desativado";
         card.addView(text(status,12,ACCENT,false));
         button(card,"Entrar no contêiner / Desktop Wine",()->launch(c));
-        button(card,"Frame Generation e desempenho",()->graphics(c));
+        button(card,"VeloWin Mali · otimização reversível",()->maliOptions(c));
+        button(card,"VeloFlow · geração de quadros",()->graphics(c));
         button(card,"Abrir arquivos e opções avançadas",
             ()->startActivity(new Intent(this,UnifiedActivity.class)));
     }
@@ -208,6 +209,28 @@ public final class VeloWinHomeActivity extends Activity {
         Intent desktop=new Intent(this,XServerDisplayActivity.class);
         desktop.putExtra("container_id",c.id);
         startActivity(desktop);
+    }
+    private void maliOptions(Container c){
+        if(c==null)return;
+        boolean already=MaliProfile.isApplied(c);
+        new AlertDialog.Builder(this).setTitle(
+                already?"Restaurar configurações originais?":"Perfil Mali · compatibilidade")
+            .setMessage(already?
+                "Restaura o driver, wrapper DirectX, resolução e variáveis "
+                +"anteriores a este perfil. A geração de quadros antiga "
+                +"permanece desativada.":
+                "Configura Wine/X11 em 1280×720, Vulkan Wrapper padrão do "
+                +"Android e WineD3D, sem Turnip nem versões OpenGL inventadas. "
+                +"Desativa FrameGen até validar suporte. Reversível. "
+                +"Inspirado em Mobox e Winlator-Mali; não garante FPS ou jogos.")
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton(already?"Restaurar":"Aplicar",(dialog,index)->{
+                try{
+                    if(already)MaliProfile.restore(c);
+                    else MaliProfile.apply(c);
+                    reload();
+                }catch(Exception e){note("Perfil Mali",e.getMessage());}
+            }).show();
     }
     private void graphics(Container c){
         if(working)return;

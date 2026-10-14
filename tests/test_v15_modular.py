@@ -46,7 +46,7 @@ class ModularGameHubContracts(unittest.TestCase):
         self.assertIn("test_v15_modular.py",yml)
         self.assertIn("FrameGenPolicyTest",yml)
         self.assertIn("VeloWinHomeActivity",yml)
-        self.assertIn("VeloWin-Modular-GameHub-FrameGen-debug",yml)
+        self.assertTrue("VeloWin-Modular-GameHub-FrameGen-debug" in yml or "VeloWin-VeloFlow-Mali-debug" in yml)
 
 if __name__=="__main__":
     unittest.main()
