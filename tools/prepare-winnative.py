@@ -158,7 +158,8 @@ def prepare(source: Path, overlay: Path):
     print(f"VeloWin: full native graphical engine pinned to {commit}")
     print("VeloWin: package=" + APPLICATION_ID +
           "; Android app name=" + APP_LABEL + f"; labels patched={changed}")
-    print("VeloWin: original GameHub-style HomeActivity + actual container and OpenFlow/DIS renderer linked.")\n    print("VeloWin: XServer, Wine container manager and GPL credits confirmed.")
+    print("VeloWin: original GameHub-style HomeActivity + actual container and OpenFlow/DIS renderer linked.")
+    print("VeloWin: XServer, Wine container manager and GPL credits confirmed.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
