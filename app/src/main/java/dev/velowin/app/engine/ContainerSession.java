@@ -175,8 +175,8 @@ public final class ContainerSession {
             case X11_WINDOW_PROBE:
                 if(!bridges().x11Enabled())
                     throw new IOException("Selecione uma ponte X11 local antes de abrir janelas.");
-                if(LocalBridgeManager.inspectX11(bridges().x11Port())
-                    .indexOf("aceitou handshake")<0)
+                if(LocalBridgeManager.handshakeX11(bridges().x11Port())
+                    !=X11Protocol.Reply.ACCEPTED)
                     throw new IOException("Servidor X11 não confirmou o protocolo. "
                         +"Verifique XServer local, porta e autenticação.");
                 BionicRelease guiWine=needWine();
