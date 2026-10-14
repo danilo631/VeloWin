@@ -90,7 +90,7 @@ def prepare(source: Path, overlay: Path):
     manifest_file = source / "app/src/main/AndroidManifest.xml"
     manifest = manifest_file.read_text(encoding="utf-8")
     original_launcher = re.compile(
-        r'(<activity\\b[^>]*android:name="com\\.winlator\\.cmod\\.app\\.shell\\.UnifiedActivity"'
+        r'(<activity\b[^>]*android:name="com\.winlator\.cmod\.app\.shell\.UnifiedActivity"'
         r'[^>]*>)(.*?)(</activity>)', re.DOTALL
     )
     matched = original_launcher.search(manifest)
@@ -98,9 +98,9 @@ def prepare(source: Path, overlay: Path):
         fail("Upstream UnifiedActivity changed; cannot safely replace launcher.")
     original_body = matched.group(2)
     main_filter = re.compile(
-        r'<intent-filter>\\s*<action android:name="android\\.intent\\.action\\.MAIN"\\s*/>'
-        r'\\s*<category android:name="android\\.intent\\.category\\.LAUNCHER"\\s*/>'
-        r'\\s*</intent-filter>\\s*', re.DOTALL
+        r'<intent-filter>\s*<action android:name="android\.intent\.action\.MAIN"\s*/>'
+        r'\s*<category android:name="android\.intent\.category\.LAUNCHER"\s*/>'
+        r'\s*</intent-filter>\s*', re.DOTALL
     )
     if len(main_filter.findall(original_body)) != 1:
         fail("Expected exactly one original launcher intent filter.")
