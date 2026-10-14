@@ -2,6 +2,8 @@ package dev.velowin.app.engine;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -127,6 +129,50 @@ public final class ContainerFileBrowser {
         for(int i=0;i<n;i++)if(all[i]==0)throw new IOException("Arquivo binário.");
         return new String(all,0,n,StandardCharsets.UTF_8)
             +(all.length>n?"\n\n[prévia limitada a 16 KiB]":"");
+    }
+
+    /**
+     * SAF-only copy into a writable private root; never follows file symlinks,
+     * overwrites existing assets, or executes imported Windows binaries.
+     * Caller obtains the user-selected InputStream via ContentResolver.
+     */
+    public long importFile(String relative,String name,InputStream input) throws IOException {
+        if(!writable)throw new IOException("Área somente leitura.");
+        if(input==null || !safeName(name) || name.length()>120)
+            throw new IOException("Arquivo selecionado inválido.");
+        for(int i=0;i<name.length();i++)
+            if(Character.isISOControl(name.charAt(i)))
+                throw new IOException("Nome contém caractere de controle.");
+        File parent=resolve(relative);
+        if(!parent.isDirectory())throw new IOException("Pasta destino inexistente.");
+        File dest=resolve(relative.isEmpty()?name:relative+"/"+name);
+        if(Files.exists(dest.toPath(),LinkOption.NOFOLLOW_LINKS))
+            throw new IOException("Arquivo já existe; não será sobrescrito.");
+        final long max=384L*1024*1024;
+        java.nio.file.Path part=Files.createTempFile(parent.toPath(),
+            ".velowin-import-",".part");
+        long total=0;
+        try {
+            try(InputStream source=input;OutputStream output=Files.newOutputStream(part)) {
+                byte[] buf=new byte[65536];
+                int n;
+                while((n=source.read(buf))!=-1){
+                    if(Thread.currentThread().isInterrupted())
+                        throw new IOException("Importação cancelada.");
+                    if(total>max-n)throw new IOException("Arquivo excede 384 MiB.");
+                    total+=n;
+                    if(parent.getUsableSpace()<64L*1024*1024)
+                        throw new IOException("Armazenamento interno insuficiente.");
+                    output.write(buf,0,n);
+                }
+            }
+            if(Files.exists(dest.toPath(),LinkOption.NOFOLLOW_LINKS))
+                throw new IOException("Destino criado durante a importação.");
+            Files.move(part,dest.toPath()); // no REPLACE_EXISTING, no overwrite
+            return total;
+        }finally{
+            Files.deleteIfExists(part);
+        }
     }
 
     public void makeFolder(String relative,String name) throws IOException {
