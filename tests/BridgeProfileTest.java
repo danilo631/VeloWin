@@ -22,6 +22,13 @@ public class BridgeProfileTest {
         }
         ok(!BridgeProfile.of(-1,true).environment().containsKey("DISPLAY"),
             "no DISPLAY without X11");
+        BridgeProfile nativeX11=BridgeProfile.embedded(false);
+        ok(nativeX11.embeddedX11() && nativeX11.x11Enabled(),"embedded transport enabled");
+        ok(nativeX11.x11Port()==-1,"embedded UNIX has no TCP port");
+        ok(":0".equals(nativeX11.environment().get("DISPLAY")),
+            "Wine uses same-UID Unix DISPLAY :0");
+        ok(!nativeX11.environment().containsKey("PULSE_SERVER"),
+            "embedded display does not falsely enable audio");
         System.out.println("BridgeProfileTest PASS");
     }
 }
