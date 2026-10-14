@@ -72,6 +72,9 @@ jobs:
             tests/GameSessionConfigTest.java \
             tests/ContainerCommandTest.java \
             tests/ContainerFileBrowserTest.java \
+            app/src/main/java/dev/velowin/app/runtime/ComponentRelease.java \
+            app/src/main/java/dev/velowin/app/runtime/ComponentReleasePolicy.java \
+            tests/ComponentReleasePolicyTest.java \
             tests/BridgeProfileTest.java \
             tests/X11ProtocolTest.java \
             tests/Win32ProbeVerdictTest.java \
@@ -97,6 +100,7 @@ jobs:
           java -ea -cp /tmp/velowin-tests GameSessionConfigTest
           java -ea -cp /tmp/velowin-tests ContainerCommandTest
           java -ea -cp /tmp/velowin-tests ContainerFileBrowserTest
+          java -ea -cp /tmp/velowin-tests ComponentReleasePolicyTest
           java -ea -cp /tmp/velowin-tests BridgeProfileTest
           java -ea -cp /tmp/velowin-tests X11ProtocolTest
           java -ea -cp /tmp/velowin-tests Win32ProbeVerdictTest
