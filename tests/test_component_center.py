@@ -33,7 +33,7 @@ class ComponentCenterContract(unittest.TestCase):
             self.assertIn(word,store)
         for word in ("WINEDLLOVERRIDES","GameGraphicsOverlay.overrides"):
             self.assertIn(word,(SRC/"engine/ContainerSession.java").read_text())
-        self.assertIn('!target.isFile()',overlay if False else store)
+        self.assertIn("!dll.isFile()",overlay)
         self.assertIn("Files.exists(target.toPath()",overlay)
         self.assertIn("Não sobrescrever",overlay)
         self.assertIn("getCanonicalFile",overlay)
