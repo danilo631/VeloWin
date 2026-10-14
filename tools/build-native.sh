@@ -10,10 +10,11 @@ git -C third_party/winnative lfs pull
 python3 tools/prepare-winnative.py --source third_party/winnative --root .
 python3 tools/strip-lsfg.py --source third_party/winnative --root .
 python3 tools/patch-v17.py --source third_party/winnative --root .
+python3 tools/patch-v18.py --source third_party/winnative
 (
   cd third_party/winnative
   ./gradlew :app:assembleStandardDebug --no-daemon \
-      -PVERSION_NAME=VeloWin-Runtime-v17-dev
+      -PVERSION_NAME=VeloWin-Recovery-v18-dev
 )
 APK="third_party/winnative/app/build/outputs/apk/standard/debug/standard.apk"
 test -s "$APK"
