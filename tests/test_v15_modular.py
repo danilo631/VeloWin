@@ -35,7 +35,7 @@ class ModularGameHubContracts(unittest.TestCase):
                        'c.putExtra("disFrameGenScale","70")',
                        '"disFrameGenTargetFps"',
                        'c.saveData()', 'PackageManager.FEATURE_VULKAN_HARDWARE_VERSION',
-                       "FrameGenPolicy.targetFps"):
+                       "FrameGenPolicy.safeTarget"):
             self.assertIn(symbol,UI)
         self.assertIn('Container.DISPLAY_BACKEND_X11',UI)
         self.assertIn('new Intent(this,UnifiedActivity.class)',UI)
