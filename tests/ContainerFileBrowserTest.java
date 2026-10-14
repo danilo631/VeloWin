@@ -43,6 +43,21 @@ public class ContainerFileBrowserTest {
             try{writable.makeFolder("",name);}catch(java.io.IOException ex){failed=true;}
             ok(failed,"folder name rejected: "+name);
         }
+        long imported=writable.importFile("drive_c","helper.dll",
+            new java.io.ByteArrayInputStream(new byte[]{1,2,3,4}));
+        ok(imported==4 && Files.size(root.resolve("drive_c/helper.dll"))==4,
+            "SAF data copied into private game folder");
+        boolean overwriteRejected=false;
+        try{writable.importFile("drive_c","helper.dll",
+            new java.io.ByteArrayInputStream(new byte[]{9}));}
+        catch(java.io.IOException expected){overwriteRejected=true;}
+        ok(overwriteRejected && Files.size(root.resolve("drive_c/helper.dll"))==4,
+            "existing game resource never overwritten");
+        boolean maliciousRejected=false;
+        try{writable.importFile("drive_c","../../evil.dll",
+            new java.io.ByteArrayInputStream(new byte[]{9}));}
+        catch(java.io.IOException expected){maliciousRejected=true;}
+        ok(maliciousRejected,"untrusted SAF display name confined");
         Files.createSymbolicLink(root.resolve("external"),outside);
         rejected(writable,"external/private.txt");
         ok(writable.list("").stream().noneMatch(e->e.name.equals("external")),
@@ -56,6 +71,12 @@ public class ContainerFileBrowserTest {
         try{readonly.makeFolder("","not-allowed");}
         catch(java.io.IOException expected){restricted=true;}
         ok(restricted,"runtime/prefix root stays read-only");
+        boolean readonlyImportRejected=false;
+        try{readonly.importFile("","override.dll",
+            new java.io.ByteArrayInputStream(new byte[]{9}));}
+        catch(java.io.IOException expected){readonlyImportRejected=true;}
+        ok(readonlyImportRejected,"Wine/prefix read-only file import refused");
+
         Files.write(root.resolve("notes.log"),new byte[500*1024]);
         boolean largeRejected=false;
         try{readonly.preview("notes.log");}
