@@ -129,6 +129,19 @@ def prepare(source: Path, overlay: Path):
         fail("Multiple launcher Activities after VeloWin UI integration.")
     manifest_file.write_text(manifest, encoding="utf-8")
 
+    # The upstream setup wizard normally returns to the WinNative Home.
+    # Keep all installation/runtime logic, redirect ONLY post-setup navigation
+    # to VeloWin's own Home, avoiding two launcher dashboards in the task stack.
+    wizard = source / "app/src/main/feature/setup/SetupWizardActivity.kt"
+    wizard_code = wizard.read_text(encoding="utf-8")
+    old_finish = """            Intent(this, UnifiedActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION),"""
+    new_finish = """            Intent(this, com.winlator.cmod.velowin.VeloWinHomeActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),"""
+    if wizard_code.count(old_finish) != 1:
+        fail("Upstream wizard finish routing changed; refusing ambiguous patch.")
+    wizard.write_text(wizard_code.replace(old_finish,new_finish), encoding="utf-8")
     # Keep all upstream notices with the binary distributed to end users.
     assets = source / "app/src/main/assets/velowin/legal"
     assets.mkdir(parents=True, exist_ok=True)
