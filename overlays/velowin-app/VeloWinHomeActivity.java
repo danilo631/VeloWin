@@ -211,6 +211,13 @@ public final class VeloWinHomeActivity extends Activity {
     }
     private void graphics(Container c){
         if(working)return;
+        if(c.isGamescopeRuntime()) {
+            note("Modo gráfico incompatível",
+                "GameScope utiliza runtime Linux/Wayland. Abra suas opções avançadas "
+                +"para configurar o compositor; este perfil OpenFlow/DIS é para "
+                +"contêineres Windows com X11.");
+            return;
+        }
         boolean vulkan=getPackageManager().hasSystemFeature(
             PackageManager.FEATURE_VULKAN_HARDWARE_VERSION);
         boolean active="1".equals(c.getExtra("disFrameGen","0"));
@@ -223,7 +230,9 @@ public final class VeloWinHomeActivity extends Activity {
                 +(vulkan?"Vulkan detectado.":"O Android não anunciou Vulkan — "
                     +"a geração ficará indisponível até confirmar o driver.")+" "
                 +"X11 recomendado para Mali. Não utiliza shaders proprietários LSFG.")
-            .setSingleChoiceItems(options,active?1:0,(dialog,which)->{
+            .setSingleChoiceItems(options,active
+                ? selectedFrameGenItem(c.getExtra("disFrameGenTargetFps","0")):0,
+                (dialog,which)->{
                 if(which!=0&&!vulkan){
                     note("Vulkan não detectado","Mantenha FrameGen desativado "
                         +"ou verifique os drivers no menu avançado.");return;
@@ -232,6 +241,7 @@ public final class VeloWinHomeActivity extends Activity {
                 int fps=FrameGenPolicy.targetFps(targets[which]);
                 if(which==0){
                     c.putExtra("disFrameGen","0");
+                    c.putExtra("frameGen","0");
                 }else{
                     c.putExtra("frameGen","0"); // LSFG and DIS are mutually exclusive.
                     c.putExtra("disFrameGen","1");
@@ -241,6 +251,14 @@ public final class VeloWinHomeActivity extends Activity {
                 c.setDisplayBackend(Container.DISPLAY_BACKEND_X11);
                 c.saveData();dialog.dismiss();reload();
             }).setNegativeButton("Cancelar",null).show();
+    }
+    private int selectedFrameGenItem(String fps) {
+        switch(fps) {
+            case "60": return 2;
+            case "90": return 3;
+            case "120": return 4;
+            default: return 1;
+        }
     }
     @Override protected void onDestroy(){
         io.shutdownNow();super.onDestroy();
