@@ -2,6 +2,11 @@ package dev.velowin.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.OpenableColumns;
+import java.io.InputStream;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -48,7 +53,9 @@ public final class ContainerFilesActivity extends Activity {
     private final ExecutorService io=Executors.newSingleThreadExecutor();
     private final LinkedHashMap<String,Root> roots=new LinkedHashMap<>();
     private ContainerFileBrowser browser;
+    private static final int PICK_PRIVATE_FILE=4071;
     private String selectedRoot="workspace", relative="";
+    private String importRoot=null, importPath="";
     private int generation=0;
     private LinearLayout fileList,rootTabs;
     private TextView location,status;
@@ -101,6 +108,8 @@ public final class ContainerFilesActivity extends Activity {
         if(savedState!=null) {
             selectedRoot=savedState.getString("root","workspace");
             relative=savedState.getString("relative","");
+            importRoot=savedState.getString("importRoot");
+            importPath=savedState.getString("importPath","");
         }
         if(!roots.containsKey(selectedRoot)){selectedRoot="workspace";relative="";}
 
@@ -133,7 +142,8 @@ public final class ContainerFilesActivity extends Activity {
         for(Object[] item:new Object[][]{
             {"← Voltar",(Runnable)this::goUp},
             {"Atualizar",(Runnable)this::refresh},
-            {"+ Pasta",(Runnable)this::askNewFolder}}){
+            {"+ Pasta",(Runnable)this::askNewFolder},
+            {"Importar",(Runnable)this::pickFile}}){
             Button b=button((String)item[0],(Runnable)item[1],false);
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1f);
             p.rightMargin=dp(5);nav.addView(b,p);
@@ -314,6 +324,60 @@ public final class ContainerFilesActivity extends Activity {
         }catch(IOException error){relative="";refresh();}
     }
 
+    private void pickFile() {
+        Root root=roots.get(selectedRoot);
+        if(root==null || !root.writable) {
+            new AlertDialog.Builder(this)
+                .setMessage("Selecione Workspace ou Jogo para importar arquivos.")
+                .setPositiveButton("OK",null).show();
+            return;
+        }
+        importRoot=selectedRoot;
+        importPath=relative;
+        Intent picker=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        picker.addCategory(Intent.CATEGORY_OPENABLE);
+        picker.setType("*/*");
+        startActivityForResult(picker,PICK_PRIVATE_FILE);
+    }
+
+    @Override protected void onActivityResult(int request,int result,Intent data) {
+        super.onActivityResult(request,result,data);
+        if(request!=PICK_PRIVATE_FILE || result!=RESULT_OK || data==null
+            || importRoot==null)return;
+        Uri uri=data.getData();
+        Root root=roots.get(importRoot);
+        final String destPath=importPath,rootId=importRoot;
+        importRoot=null;
+        if(uri==null || !"content".equals(uri.getScheme()) || root==null
+            || !root.writable)return;
+        String title="imported-file.bin";
+        try(Cursor cursor=getContentResolver().query(uri,
+            new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)) {
+            if(cursor!=null && cursor.moveToFirst() && !cursor.isNull(0))
+                title=cursor.getString(0);
+        }catch(Exception ignored){}
+        final String fileName=title;
+        status.setText("Importando "+fileName+"...");
+        io.execute(()->{
+            String message;
+            try(InputStream source=getContentResolver().openInputStream(uri)) {
+                if(source==null)throw new IOException("Arquivo inacessível.");
+                long bytes=new ContainerFileBrowser(root.file,true)
+                    .importFile(destPath,fileName,source);
+                message="Arquivo importado: "+bytes+" bytes. Nenhum executável foi iniciado.";
+            }catch(Exception error){
+                message="Importação não realizada: "+error.getMessage();
+            }
+            final String report=message;
+            runOnUiThread(()->{
+                if(isFinishing()||isDestroyed())return;
+                new AlertDialog.Builder(this).setMessage(report)
+                    .setPositiveButton("OK",null).show();
+                if(selectedRoot.equals(rootId)&&relative.equals(destPath))refresh();
+            });
+        });
+    }
+
     private void askNewFolder() {
         Root target=roots.get(selectedRoot);
         if(target==null || !target.writable){
@@ -351,6 +415,8 @@ public final class ContainerFilesActivity extends Activity {
         super.onSaveInstanceState(out);
         out.putString("root",selectedRoot);
         out.putString("relative",relative);
+        out.putString("importRoot",importRoot);
+        out.putString("importPath",importPath);
     }
     @Override protected void onDestroy() {
         ++generation;
