@@ -191,7 +191,7 @@ public final class ContainerSession {
                 BionicRelease run=needWine();
                 needPrefix(run);
                 File exe=stageGame(cancelled,feedback);
-                return probe(wineCommand(run,exe.getAbsolutePath()),environment(run,true),
+                return probe(wineCommand(run,exe.getAbsolutePath()),gameEnvironment(run),
                     30000,cancelled,"EXE Windows importado (experimental)")
                     +"\nArquivos auxiliares do jogo não foram importados. "
                     +"Sem X11, programas com janela podem falhar.";
@@ -277,6 +277,21 @@ public final class ContainerSession {
         // standalone Wine --version. No Linux/glibc PATH is inherited.
         return WineLaunchEnvironment.build(wineRoot,work,
             withPrefix?needPrefix(release):null,preset,bridges().environment(),true);
+    }
+
+    private Map<String,String> gameEnvironment(BionicRelease release)throws Exception {
+        Map<String,String> env=environment(release,true);
+        String graphics=game.renderApi==null?"WINED3D":game.renderApi;
+        if("DXVK".equals(graphics)||"VKD3D".equals(graphics)) {
+            // Fail closed: a menu preference alone does not enable Direct3D.
+            env.put("WINEDLLOVERRIDES",GameGraphicsOverlay.overrides(ctx,game,graphics));
+        } else if("WINED3D".equals(graphics)) {
+            String overlayStatus=GameGraphicsOverlay.status(ctx,game);
+            if(overlayStatus.startsWith("Injeção local verificada"))
+                throw new IOException("Há DLLs DXVK/VKD3D no jogo. Remova a camada "
+                    +"em Configurações do jogo antes de escolher WineD3D.");
+        }
+        return env;
     }
 
     private BoundedProcess.Result runProbe(List<String> argv,Map<String,String> env,
