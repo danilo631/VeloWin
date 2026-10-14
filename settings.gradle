@@ -7,3 +7,7 @@ dependencyResolutionManagement {
 }
 rootProject.name = 'VeloWin'
 include ':app'
+include ':lorie'
+include ':shell-loader:stub'
+project(':lorie').projectDir = file('third_party/termux-x11/lorie')
+project(':shell-loader:stub').projectDir = file('third_party/termux-x11/shell-loader/stub')
