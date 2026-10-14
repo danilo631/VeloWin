@@ -40,6 +40,10 @@
             android:screenOrientation="unspecified"/>
         <activity android:name=".ContainerFilesActivity" android:exported="false"
             android:screenOrientation="unspecified"/>
+        <service android:name=".engine.EmbeddedX11Service"
+            android:exported="false"
+            android:process=":velowin_x11"
+            android:stopWithTask="true"/>
         <activity android:name=".ContainerLabActivity" android:exported="false"
             android:screenOrientation="unspecified"/>
         <activity android:name=".hardware.VirtualControllerLabActivity"
