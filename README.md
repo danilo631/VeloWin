@@ -1,97 +1,100 @@
-# VeloWin Native
+# VeloWin — Modular Android Windows Gaming
 
-**Aplicativo Android para executar contêineres Windows, construído sobre o motor completo
-do [WinNative](https://github.com/WinNative-Emu/WinNative) (GPL-3.0).**
+**VeloWin** é um app Android autoral para criar ambientes Windows, instalar
+componentes e executar programas e jogos. O projeto combina uma interface
+própria, inspirada na praticidade de hubs de jogos, com motores open source
+comprovados da comunidade.
 
-> **A branch v14 muda a base do app de verdade.** O protótipo
-> `ContainerLabActivity`/Termux:Lorie foi removido da árvore principal.
-> Seu histórico Git permanece acessível para auditoria e reversão;
-> nenhum componente desse laboratório entra no APK VeloWin Native.
+## Arquitetura da versão v15
 
-## O que funciona no motor adotado
+| Área | Fonte e implementação |
+| --- | --- |
+| **Home VeloWin** | Código original em `overlays/velowin-app/VeloWinHomeActivity.java`. Biblioteca, criar contêiner, entrar no desktop, gerenciamento rápido de FrameGen |
+| **Perfis e segurança de FrameGen** | Código original em `FrameGenPolicy.java` |
+| **X11, janelas e controles** | Motor Winlator, adaptado pela comunidade WinNative; compilado dos fontes do submódulo fixado |
+| **Wine/Proton + Box64/FEX e áudio** | Serviços integrados do motor open source WinNative/Winlator |
+| **Frame generation** | Pipeline Vulkan **OpenFlow/DIS** do WinNative, selecionado pelo VeloWin. Não emula FPS nem inclui shaders proprietários LSFG |
+| **Drivers e pacotes** | Gerenciador upstream de Wine, DXVK, VKD3D-Proton, Mesa e outros componentes; GPU e arquitetura precisam ser compatíveis |
+| **Termux:X11** | Fonte GPLv3 estudada nas versões experimentais. Não embutida junto ao XServer do Winlator para evitar duas stacks gráficas em conflito |
+| **Experiência GameHub** | Referência de UX (acesso rápido aos jogos, perfis e execução). Sem copiar recursos proprietários nem alegar vínculo com o produto |
 
-O motor upstream inclui integração real de XServer, Surface Android,
-teclado/mouse/touch/controles, ImageFS, gerenciador de contêineres, Wine/Proton,
-Box64, áudio, perfis e instalação de componentes. É **o código do motor upstream
-sendo compilado como app VeloWin**, não um conjunto de botões de diagnóstico.
+A base gráfica WinNative continua versionada por submódulo Git — ela é uma
+**dependência de motor**, não mais a interface principal apresentada ao
+usuário. O VeloWin tem seu próprio launcher, criado e mantido neste
+repositório. O menu avançado ainda oferece o ambiente completo do motor.
 
-Abra o aplicativo, conclua o assistente de instalação do ImageFS e acesse
-**Containers → Add Container → Run**. O próprio motor apresenta o ambiente
-gráfico e gerencia seus arquivos/jogos. Também é possível importar EXEs e
-configurar o perfil de compatibilidade dentro do aplicativo.
+## Como usar
 
-**Isso não implica que todos os jogos Windows rodem**; desempenho, GPU,
-DLLs e Wine dependem do hardware e dos componentes instalados.
+1. Instale um APK **da branch v15 com GitHub Actions aprovado**.
+2. Abra o VeloWin. Instale os arquivos ImageFS e runtimes Wine/Proton pelo
+   assistente quando solicitado.
+3. Use **Criar contêiner Windows**: ele seleciona um runtime instalado e chama
+   o criador de prefixos real do motor.
+4. Toque em **Entrar no contêiner / Desktop Wine**. O aplicativo inicia
+   `XServerDisplayActivity` com o ID daquele contêiner, ligando a
+   inicialização de Wine, Box64/FEX, XServer e os controles reais.
+5. Em **Frame Generation e desempenho**, escolha desligado ou **OpenFlow/DIS**
+   adaptativo, alvo 60, 90 ou 120 FPS. A seleção é armazenada por contêiner
+   como `disFrameGen`/`disFrameGenTargetFps`. O renderizador decide o que
+   suporta na GPU; o valor selecionado é uma meta, não FPS comprovado.
+6. Em **Componentes, drivers e biblioteca**, configure DXVK, VKD3D,
+   WineD3D, áudio e os demais componentes via menu avançado.
 
-## Fonte e construção
+**GPU Mali:** usar X11 como padrão e drivers apropriados à Mali. Turnip é
+feito para Adreno. Vulkan e suporte de compute precisam ser testados em
+cada dispositivo.
 
-A revisão do motor é fixa:
-`WinNative-Emu/WinNative@8409085f706acbc0749881d9bf1e85f2f347dfd4`,
-sob `third_party/winnative`. Esse upstream reúne códigos e abordagens
-do Winlator, GameNative, Mesa, Box64, Wine e outros. O Termux:X11 estudado
-nas versões anteriores permanece separado: o APK Native utiliza **somente
-o XServer integrado do WinNative**, não duas stacks X11 competindo.
+## Como compilar
 
-Use JDK 17, Android SDK 35, NDK 27.3.13750724, CMake 3.22.1, Rust com
-target `aarch64-linux-android` e Git LFS:
+A versão do motor está fixada em
+`WinNative-Emu/WinNative@8409085f706acbc0749881d9bf1e85f2f347dfd4`.
+O script `tools/prepare-winnative.py` injeta o código **original** do
+VeloWin no projeto Android fonte, registra a nova Activity como o único
+launcher e preserva o Winlator/WinNative como motor, com créditos e
+licenças. O source upstream não é copiado manualmente para a raiz.
+
+Pré-requisitos: JDK 17, Git LFS, SDK 35, NDK 27.3.13750724, CMake 3.22.1,
+Rust com target aarch64-linux-android e bastante espaço livre.
 
 ```bash
-git clone --recurse-submodules https://github.com/danilo631/VeloWin.git
+git clone https://github.com/danilo631/VeloWin.git
 cd VeloWin
-git checkout feature/v14-native-clean-main
+git checkout feature/v15-modular-velowin-gamehub
 git submodule update --init --recursive third_party/winnative
 rustup target add aarch64-linux-android
 bash tools/build-native.sh
 ```
 
-A saída local é
-`third_party/winnative/app/build/outputs/apk/standard/debug/standard.apk`.
+A execução CI **VeloWin Modular GameHub Runtime** exporta o artefato
+`VeloWin-Modular-GameHub-FrameGen-debug`, **somente se a build passar**.
+O APK usa `dev.velowin.app`. Não misture versões assinadas por chaves debug
+diferentes sem backup prévio dos dados.
 
-No GitHub Actions, use **[VeloWin Full Native Runtime](https://github.com/danilo631/VeloWin/actions/workflows/velowin-native.yml)**.
-O artefato, **se o workflow estiver verde**, é
-`VeloWin-Native-Full-Container-debug`. Nenhum artefato deve ser anunciado
-como funcional antes de passar pela compilação e teste Android.
+## Licenças, fontes e créditos
 
-## Identidade e separação
+- **VeloWin (UI e configuração)**: código fonte original, distribuído sob
+  GPL-3.0 no aplicativo combinado.
+- **Winlator**: <https://github.com/brunodev85/winlator-app> (LGPL-2.1).
+- **WinNative**: <https://github.com/WinNative-Emu/WinNative> (GPL-3.0),
+  incluindo créditos a GameNative, Box64, Wine, Mesa, DirectAudio e outros
+  componentes.
+- **Termux:X11**: <https://github.com/termux/termux-x11> (GPL-3.0),
+  referência separada, não embutida neste APK.
+- **DXVK**: <https://github.com/doitsujin/dxvk>.
+- **VKD3D-Proton**: <https://github.com/HansKristian-Work/vkd3d-proton>.
+- **Mesa**: <https://mesa3d.org/>.
 
-- `applicationId = dev.velowin.app` e nome **VeloWin**;
-- Java/Kotlin e JNI mantêm o namespace consolidado `com.winlator.cmod`,
-  para não quebrar chamadas nativas e registros internos;
-- o flavor `standard` não usa nomes de pacotes de benchmarks ou jogos;
-- códigos originais MIT do VeloWin permanecem rastreáveis no histórico;
-- o APK combinado contém créditos e texto integral da GPL upstream.
+Os textos integrais das licenças e créditos upstream são incluídos como
+assets. O código original MIT das versões anteriores preserva sua
+atribuição; o **APK combinado permanece sujeito à GPLv3**. O projeto não
+redistribui shaders proprietários de Lossless Scaling.
 
-O **gerenciador de contêineres nativo** substitui o protótipo de laboratório
-anterior. Não transferimos automaticamente prefixos, jogos ou saves entre
-`app/src/main/java/dev/velowin` e o novo motor: o layout e a estrutura
-de dados são diferentes. Não desinstale versões antigas sem backup.
+Veja [componentes e licenciamento detalhados](docs/COMPONENT_MIX_V15.md).
 
-## GPU e drivers
+## O que já é validável
 
-Em GPUs **Mali**, preserve os drivers do Android e teste os modos
-compatíveis expostos pelo runtime; não selecione Turnip (driver Adreno)
-como se fosse um driver Mali. DXVK requer suporte Vulkan apropriado;
-VKD3D-Proton necessita de extensões adicionais, e WineD3D pode servir de
-alternativa quando adequado. O Wayland específico do WinNative tem
-condições restritivas ligadas a Adreno; use X11 em Mali.
-
-## Licenças e contribuição
-
-**O APK construído com a base WinNative está sujeito à GPL-3.0.**
-Não basta apenas mencionar autores: todo o código-fonte correspondente,
-scripts de build e avisos necessários devem ser disponibilizados. Os
-fontes e avisos estão preservados na revisão fixada e copiados para a
-pasta de avisos dentro do APK.
-
-- [Plano de implementação e checklist de validação](docs/NATIVE_ENGINE_V14.md)
-- [WinNative — GPLv3, créditos completos](https://github.com/WinNative-Emu/WinNative/blob/8409085f706acbc0749881d9bf1e85f2f347dfd4/CREDITS.md)
-- [WinNative — créditos de emuladores](https://github.com/WinNative-Emu/WinNative/blob/8409085f706acbc0749881d9bf1e85f2f347dfd4/EMULATOR_CREDITS.md)
-- [Winlator](https://github.com/brunodev85/winlator)
-- [Termux:X11](https://github.com/termux/termux-x11)
-- [DXVK](https://github.com/doitsujin/dxvk)
-- [VKD3D-Proton](https://github.com/HansKristian-Work/vkd3d-proton)
-- [Mesa](https://mesa3d.org/)
-
-**Status de engenharia:** o novo runtime é uma integração de fontes consolidadas;
-um build aprovado ainda precisa de teste físico para comprovar que contêiner,
-Wine e jogos abrem em cada aparelho.
+O código da nova Home, criação de contêiner, abertura do XServer real e
+configuração do OpenFlow/DIS está conectado a APIs reais do upstream.
+Passar nos testes e compilar o APK **não confirma** desktop Wine, áudio,
+interpolação de quadros nem compatibilidade de jogos no telefone. Esses
+recursos exigem testes em hardware, com log e observação da Surface.
