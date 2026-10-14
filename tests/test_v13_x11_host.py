@@ -33,6 +33,12 @@ class EmbeddedX11HostContracts(unittest.TestCase):
         self.assertIn("Tela X11",ui)
         self.assertIn("Parar X11",ui)
         self.assertIn("handshakeEmbeddedX11",ui)
+        # A long-running Wine probe uses the console's serial worker.
+        # The Surface must open concurrently, not wait behind Wine timeout.
+        view=ui.split("private void openEmbeddedX11Display()",1)[1].split(
+            "private void stopEmbeddedX11",1)[0]
+        self.assertIn('new Thread(()->{',view)
+        self.assertNotIn('worker.execute(',view)
         session=(JAVA/"engine/ContainerSession.java").read_text()
         self.assertIn("X11Protocol.Reply.ACCEPTED",session)
         self.assertIn("wineCommand(guiWine,\"notepad\")",session)
