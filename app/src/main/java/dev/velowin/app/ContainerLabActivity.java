@@ -263,7 +263,9 @@ public final class ContainerLabActivity extends Activity {
     }
 
     private void openEmbeddedX11Display() {
-        worker.execute(()->{
+        // Independent of the serial Wine process queue: a running Notepad must
+        // not block opening the Android display activity.
+        new Thread(()->{
             final X11Protocol.Reply reply=LocalBridgeManager.handshakeEmbeddedX11(
                 getApplicationContext());
             runOnUiThread(()->{
@@ -277,7 +279,7 @@ public final class ContainerLabActivity extends Activity {
                     startActivity(new Intent(this,com.termux.x11.MainActivity.class));
                 }catch(Exception error){append("\\n[X11] Falha da Surface: "+error+"\\n");}
             });
-        });
+        },"VeloWin-X11-ViewProbe").start();
     }
 
     private void stopEmbeddedX11(){
