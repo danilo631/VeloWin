@@ -18,7 +18,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.winlator.cmod.app.shell.UnifiedActivity;
 import com.winlator.cmod.feature.setup.SetupWizardActivity;
 import com.winlator.cmod.runtime.container.Container;
 import com.winlator.cmod.runtime.container.ContainerCreation;
@@ -102,8 +101,8 @@ public final class VeloWinHomeActivity extends Activity {
         screen.addView(text("V / VELOWIN",24,ACCENT,true));
         screen.addView(text("Seus jogos Windows, seu ambiente",13,MUTED,false));
         button(screen,"+ Criar contêiner Windows",this::createContainer);
-        button(screen,"Componentes, drivers e biblioteca",
-            ()->startActivity(new Intent(this,UnifiedActivity.class)));
+        button(screen,"Configurações • VeloWin",
+            ()->startActivity(new Intent(this,VeloSettingsActivity.class)));
         button(screen,"Atualizar lista",this::reload);
         ScrollView scroll=new ScrollView(this);
         list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
@@ -160,8 +159,28 @@ public final class VeloWinHomeActivity extends Activity {
         button(card,"Método: Bionic / FEX / Linux PRoot",()->runtimeOptions(c));
         button(card,"VeloWin Mali · otimização reversível",()->maliOptions(c));
         button(card,"VeloFlow · geração de quadros",()->graphics(c));
-        button(card,"Abrir arquivos e opções avançadas",
-            ()->startActivity(new Intent(this,UnifiedActivity.class)));
+        button(card,"Arquivos, áudio e configurações",
+            ()->{
+                Intent settings=new Intent(this,VeloSettingsActivity.class);
+                settings.putExtra(VeloSettingsActivity.CONTAINER_ID,c.id);
+                startActivity(settings);
+            });
+        button(card,"Reparar tela preta • WineD3D/Winefile",()->{
+            new AlertDialog.Builder(this).setTitle("VeloWin • modo de recuperação")
+                .setMessage("Configura X11, WineD3D, 1280×720 e um gerenciador "
+                    +"de arquivos Wine alternativo. O prefixo e os jogos "
+                    +"serão preservados; configurações antigas podem "
+                    +"ser restauradas no painel VeloWin.")
+                .setNegativeButton("Cancelar",null)
+                .setPositiveButton("Aplicar e entrar",(d,w)->{
+                    try{
+                        MaliProfile.apply(c);
+                        c.putExtra(VeloBootTarget.MODE_KEY,"1");
+                        c.setStartupSelection(Container.STARTUP_SELECTION_ESSENTIAL);
+                        c.saveData();launch(c);
+                    }catch(Exception e){note("Recuperação",e.getMessage());}
+                }).show();
+        });
     }
     private void createContainer(){
         if(working){note("Operação ativa","A criação anterior ainda está em execução.");return;}
