@@ -21,6 +21,6 @@ public final class FrameGenPolicy {
         return DIS.equals(mode);
     }
     public static boolean usesProprietaryShaders(String mode) {
-        return false; // VeloWin UI intentionally exposes free OpenFlow only.
+        return "LSFG".equals(mode); // Only DIS is available in the VeloWin quick panel.
     }
 }
