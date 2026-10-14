@@ -36,13 +36,8 @@ public final class WineVersionSmoke {
                 return "O binário Wine aponta para fora do diretório instalado.";
             File box64=new File(context.getApplicationInfo().nativeLibraryDir,
                 "libvelobox64.so").getCanonicalFile();
-            Map<String,String> env=new LinkedHashMap<>(Box64Tuning.environment(preset));
-            env.put("HOME",new File(workspace,"home").getAbsolutePath());
-            env.put("TMPDIR",new File(workspace,"tmp").getAbsolutePath());
-            env.put("WINEDEBUG","-all");
-            env.put("BOX64_LD_LIBRARY_PATH",
-                new File(wineRoot,"lib/wine/x86_64-unix").getAbsolutePath()
-                +":"+new File(wineRoot,"lib").getAbsolutePath());
+            Map<String,String> env=WineLaunchEnvironment.build(wineRoot,workspace,
+                null,preset,java.util.Collections.emptyMap(),false);
             BoundedProcess.Result result=BoundedProcess.run(
                 Arrays.asList(box64.getAbsolutePath(),wine.getAbsolutePath(),"--version"),
                 workspace,env,9000,new AtomicBoolean(false));
