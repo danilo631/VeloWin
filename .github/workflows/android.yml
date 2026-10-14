@@ -46,6 +46,7 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/PrefixArchivePath.java \
             app/src/main/java/dev/velowin/app/engine/GameSessionConfig.java \
             app/src/main/java/dev/velowin/app/engine/ContainerCommand.java \
+            app/src/main/java/dev/velowin/app/engine/ContainerFileBrowser.java \
             app/src/main/java/dev/velowin/app/engine/BridgeProfile.java \
             app/src/main/java/dev/velowin/app/engine/X11Protocol.java \
             app/src/main/java/dev/velowin/app/engine/Win32ProbeVerdict.java \
@@ -70,6 +71,7 @@ jobs:
             tests/PrefixArchivePathTest.java \
             tests/GameSessionConfigTest.java \
             tests/ContainerCommandTest.java \
+            tests/ContainerFileBrowserTest.java \
             tests/BridgeProfileTest.java \
             tests/X11ProtocolTest.java \
             tests/Win32ProbeVerdictTest.java \
@@ -94,6 +96,7 @@ jobs:
           java -ea -cp /tmp/velowin-tests PrefixArchivePathTest
           java -ea -cp /tmp/velowin-tests GameSessionConfigTest
           java -ea -cp /tmp/velowin-tests ContainerCommandTest
+          java -ea -cp /tmp/velowin-tests ContainerFileBrowserTest
           java -ea -cp /tmp/velowin-tests BridgeProfileTest
           java -ea -cp /tmp/velowin-tests X11ProtocolTest
           java -ea -cp /tmp/velowin-tests Win32ProbeVerdictTest
