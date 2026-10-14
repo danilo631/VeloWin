@@ -43,7 +43,7 @@ def patch(source,root):
     # panel Hz, preserving adaptive target=0 as the upstream estimator's input.
     renderer=vk/"vk_renderer.c"
     s=renderer.read_text()
-    anchor='#include "vk_renderer.h"'
+    anchor='#include "vk_state.h"'
     if anchor not in s: raise RuntimeError("upstream X11 Vulkan header moved")
     s=once(s,anchor,anchor+'\n#include "veloflow_pacing.h"',"X11 include")
     old='vkr_dis_configure(r->dis, r->dis_scale, r->dis_target_fps, r->framegen_refresh_rate);'
