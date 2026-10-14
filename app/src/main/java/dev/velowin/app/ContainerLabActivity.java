@@ -143,7 +143,7 @@ public final class ContainerLabActivity extends Activity {
         labelRow(actions,"Diagnóstico guiado",ContainerCommand.Action.DIAGNOSE,
             "Testar portas locais",ContainerCommand.Action.BRIDGE_PROBE);
         labelRow(actions,"Tentar janela Wine/X11",ContainerCommand.Action.X11_WINDOW_PROBE,
-            "Configurar X11",ContainerCommand.Action.BRIDGE_PROBE);
+            "Checar X11",ContainerCommand.Action.BRIDGE_PROBE);
         LinearLayout bridgeRow=new LinearLayout(this);
         bridgeRow.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams bridgeParams=new LinearLayout.LayoutParams(-1,-2);
