@@ -248,7 +248,7 @@ public final class ComponentCenterActivity extends Activity {
                                     +"da origem VeloWin. Volte e pressione instalar novamente "
                                     +"após conceder a permissão.")
                                 .setNegativeButton("Cancelar",null)
-                                .setPositiveButton("Configurar",(d,w)->{
+                                .setPositiveButton("Configurar",(settingsDialog,settingsButton)->{
                                     Intent settings=new Intent(
                                         Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                         Uri.parse("package:"+getPackageName()));
