@@ -864,6 +864,13 @@ public final class MainActivity extends Activity {
 
     private void renderRuntimes() {
         section("Runtimes", "Android Bionic e Linux/glibc são ambientes separados.");
+        LinearLayout components=card();
+        add(components,"Central de Componentes",17,WHITE,true,6);
+        add(components,"DXVK, VKD3D-Proton e Termux:X11: releases oficiais, SHA-256 e arquivos por ABI. "
+            +"Wine Bionic permanece gerenciado abaixo. Instalar DLL não significa ativar GPU.",
+            12,MUTED,false,5);
+        action(components,"Abrir Central de Componentes",
+            ()->startActivity(new Intent(this,ComponentCenterActivity.class)),true);
         LinearLayout bionic = card();
         add(bionic, "Android Bionic · Experimental", 17, WHITE, true, 7);
         add(bionic, "Box64 ARM64/Bionic: "+(Box64Smoke.bundled(this)
