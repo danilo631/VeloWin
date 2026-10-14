@@ -232,19 +232,22 @@ public final class ContainerLabActivity extends Activity {
         if(running){append("[Finalize o teste antes de alterar X11]\n");return;}
         BridgeProfile old=session.bridges();
         String[] displays={"Desativado (mais seguro)",
+            "XServer VeloWin interno :0 (UNIX, experimental)",
             "Servidor X11 local :0 (TCP 6000)","Servidor X11 local :1 (TCP 6001)",
             "Servidor X11 local :2 (TCP 6002)"};
-        int checked=old.display<0?0:Math.min(old.display+1,3);
+        int checked=old.embeddedX11()?1:old.display<0?0:Math.min(old.display+2,4);
         new AlertDialog.Builder(this).setTitle("X11 experimental — só no próprio telefone")
-            .setMessage("Exige um servidor X11 TCP que você iniciou no Android. "
-                +"O VeloWin não instala nem inicia X11. X11 TCP pode permitir que "
+            .setMessage("UNIX interno precisa do processo XServer NDK do VeloWin, "
+                +"que ainda não foi iniciado automaticamente. TCP exige um servidor "
+                +"X11 externo já iniciado. X11 TCP pode permitir que "
                 +"outros processos locais leiam a interface; use só em um "
                 +"ambiente de teste confiável. Nenhuma porta remota é aceita.")
             .setSingleChoiceItems(displays,checked,(dialog,choice)->{
-                int display=choice-1;
+                int display=choice-2;
                 try {
                     LocalBridgeManager.put(this,session.sessionId(),
-                        BridgeProfile.of(display,old.pulseAudio));
+                        choice==1?BridgeProfile.embedded(old.pulseAudio)
+                            :BridgeProfile.of(display,old.pulseAudio));
                     append("\n[Ponte X11] "+session.bridges().summary()+"\n");
                 }catch(Exception e){append("\n[Erro na configuração X11] "+e.getMessage()+"\n");}
                 dialog.dismiss();
@@ -261,9 +264,14 @@ public final class ContainerLabActivity extends Activity {
                 +"recebe áudio do Wine.")
             .setNegativeButton("Cancelar",null)
             .setNeutralButton("Desativar",(dialog,which)->persistBridge(
-                BridgeProfile.of(old.display,false)))
+                pulseProfile(old,false)))
             .setPositiveButton("Ativar",(dialog,which)->persistBridge(
-                BridgeProfile.of(old.display,true))).show();
+                pulseProfile(old,true))).show();
+    }
+
+    private BridgeProfile pulseProfile(BridgeProfile existing,boolean enabled) {
+        return existing.embeddedX11()?BridgeProfile.embedded(enabled)
+            :BridgeProfile.of(existing.display,enabled);
     }
 
     private void persistBridge(BridgeProfile profile) {
