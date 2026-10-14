@@ -11,7 +11,7 @@ python3 tools/prepare-winnative.py --source third_party/winnative --root .
 (
   cd third_party/winnative
   ./gradlew :app:assembleStandardDebug --no-daemon \
-      -PVERSION_NAME=VeloWin-Native-v14-dev
+      -PVERSION_NAME=VeloWin-Modular-v15-dev
 )
 APK="third_party/winnative/app/build/outputs/apk/standard/debug/standard.apk"
 test -s "$APK"

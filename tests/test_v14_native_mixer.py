@@ -1,4 +1,4 @@
-"""Source contracts for the independent, full WinNative-based VeloWin flavor."""
+"""Source contracts for the pinned engine dependency of the modular VeloWin flavor."""
 from pathlib import Path
 import unittest
 import re
@@ -53,7 +53,7 @@ class NativeMixerContracts(unittest.TestCase):
         new=(ROOT/"README.md").read_text()
         self.assertIn("WinNative",new)
         self.assertIn("GPL-3.0",new)
-        self.assertIn("VeloWin Full Native Runtime",new)
+        self.assertIn("VeloWin Modular",new)
 
 if __name__ == "__main__":
     unittest.main()

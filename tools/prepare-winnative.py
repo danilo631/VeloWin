@@ -76,6 +76,72 @@ def prepare(source: Path, overlay: Path):
     for p in manifests:
         if '@string/common_ui_app_name' not in p.read_text(encoding="utf-8"):
             fail("Launcher must use the localized app name resource")
+    # VeloWin's own application-facing shell. Keep the battle-tested
+    # XServer/renderer/ContainerManager from the Winlator-derived runtime,
+    # but do NOT ship a WinNative UI copy as the Android launcher.
+    overlay_sources = overlay / "overlays/velowin-app"
+    java_target = source / "app/src/main/app/velowin"
+    java_target.mkdir(parents=True, exist_ok=True)
+    for filename in ("VeloWinHomeActivity.java", "FrameGenPolicy.java"):
+        src = overlay_sources / filename
+        if not src.is_file():
+            fail("Missing original VeloWin UI module: " + filename)
+        shutil.copyfile(src, java_target / filename)
+    manifest_file = source / "app/src/main/AndroidManifest.xml"
+    manifest = manifest_file.read_text(encoding="utf-8")
+    original_launcher = re.compile(
+        r'(<activity\b[^>]*android:name="com\.winlator\.cmod\.app\.shell\.UnifiedActivity"'
+        r'[^>]*>)(.*?)(</activity>)', re.DOTALL
+    )
+    matched = original_launcher.search(manifest)
+    if matched is None:
+        fail("Upstream UnifiedActivity changed; cannot safely replace launcher.")
+    original_body = matched.group(2)
+    main_filter = re.compile(
+        r'<intent-filter>\s*<action android:name="android\.intent\.action\.MAIN"\s*/>'
+        r'\s*<category android:name="android\.intent\.category\.LAUNCHER"\s*/>'
+        r'\s*</intent-filter>\s*', re.DOTALL
+    )
+    if len(main_filter.findall(original_body)) != 1:
+        fail("Expected exactly one original launcher intent filter.")
+    original_body = main_filter.sub("", original_body, count=1)
+    manifest = (manifest[:matched.start(2)] + original_body
+                + manifest[matched.end(2):])
+    new_launcher = """
+        <!-- Original VeloWin UI. Full Winlator-derived runtime remains a
+             source-linked library; advanced tools stay in UnifiedActivity. -->
+        <activity
+            android:name="com.winlator.cmod.velowin.VeloWinHomeActivity"
+            android:exported="true"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="fullUser">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+"""
+    if manifest.count("</application>") != 1:
+        fail("Android manifest application node changed.")
+    manifest = manifest.replace("</application>", new_launcher + "    </application>")
+    # A single launcher is essential for predictable home/back navigation.
+    if manifest.count('android.intent.category.LAUNCHER') != 1:
+        fail("Multiple launcher Activities after VeloWin UI integration.")
+    manifest_file.write_text(manifest, encoding="utf-8")
+
+    # The upstream setup wizard normally returns to the WinNative Home.
+    # Keep all installation/runtime logic, redirect ONLY post-setup navigation
+    # to VeloWin's own Home, avoiding two launcher dashboards in the task stack.
+    wizard = source / "app/src/main/feature/setup/SetupWizardActivity.kt"
+    wizard_code = wizard.read_text(encoding="utf-8")
+    old_finish = """            Intent(this, UnifiedActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION),"""
+    new_finish = """            Intent(this, com.winlator.cmod.velowin.VeloWinHomeActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),"""
+    if wizard_code.count(old_finish) != 1:
+        fail("Upstream wizard finish routing changed; refusing ambiguous patch.")
+    wizard.write_text(wizard_code.replace(old_finish,new_finish), encoding="utf-8")
     # Keep all upstream notices with the binary distributed to end users.
     assets = source / "app/src/main/assets/velowin/legal"
     assets.mkdir(parents=True, exist_ok=True)
@@ -105,6 +171,7 @@ def prepare(source: Path, overlay: Path):
     print(f"VeloWin: full native graphical engine pinned to {commit}")
     print("VeloWin: package=" + APPLICATION_ID +
           "; Android app name=" + APP_LABEL + f"; labels patched={changed}")
+    print("VeloWin: original GameHub-style HomeActivity + actual container and OpenFlow/DIS renderer linked.")
     print("VeloWin: XServer, Wine container manager and GPL credits confirmed.")
 
 if __name__ == "__main__":

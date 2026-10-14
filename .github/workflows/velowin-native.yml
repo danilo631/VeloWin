@@ -1,11 +1,14 @@
-name: VeloWin Full Native Runtime
+name: VeloWin Modular GameHub Runtime
 
 on:
   push:
-    branches: [main, feature/v14-native-clean-main]
+    branches: [main, feature/v14-native-clean-main, feature/v15-modular-velowin-gamehub]
     paths:
       - .gitmodules
       - tools/prepare-winnative.py
+      - 'overlays/velowin-app/**'
+      - tests/test_v15_modular.py
+      - tests/FrameGenPolicyTest.java
       - .github/workflows/velowin-native.yml
       - tests/test_v14_native_mixer.py
       - README.md
@@ -33,7 +36,14 @@ jobs:
         with:
           submodules: false
       - name: Validate complete native engine source pin
-        run: python3 -m unittest discover -s tests -p test_v14_native_mixer.py -v
+        run: |
+          python3 -m py_compile tools/prepare-winnative.py
+          python3 -m unittest discover -s tests -p test_v14_native_mixer.py -v
+          python3 -m unittest discover -s tests -p test_v15_modular.py -v
+          mkdir -p /tmp/velowin-framegen-test
+          javac -d /tmp/velowin-framegen-test \
+            overlays/velowin-app/FrameGenPolicy.java tests/FrameGenPolicyTest.java
+          java -ea -cp /tmp/velowin-framegen-test FrameGenPolicyTest
 
   native-apk:
     name: Build full XServer + Wine/Proton + Box64 VeloWin APK
@@ -101,7 +111,7 @@ jobs:
           set -euo pipefail
           chmod +x gradlew
           ./gradlew :app:assembleStandardDebug --no-daemon --stacktrace --build-cache \
-            -PVERSION_NAME=VeloWin-Native-v14-dev
+            -PVERSION_NAME=VeloWin-Modular-v15-dev
       - name: Audit VeloWin identity, graphical components and license in APK
         run: |
           set -euo pipefail
@@ -116,12 +126,16 @@ jobs:
           grep -F "assets/velowin/legal/WinNative-CREDITS.md" /tmp/velowin-v14-apk-files.txt
           grep -F "assets/velowin/legal/VELO-WIN-NOTICE.txt" /tmp/velowin-v14-apk-files.txt
           grep -F "classes.dex" /tmp/velowin-v14-apk-files.txt
+          # The APK must have exactly one original VeloWin HOME launcher.
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -F 'com.winlator.cmod.velowin.VeloWinHomeActivity'
+          test -s third_party/winnative/app/src/main/app/velowin/VeloWinHomeActivity.java
+          test -s third_party/winnative/app/src/main/app/velowin/FrameGenPolicy.java
           sha256sum "$APK" | tee /tmp/velowin-v14-sha256.txt
           mkdir -p out
           cp "$APK" out/VeloWin-Native-arm64-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: VeloWin-Native-Full-Container-debug
+          name: VeloWin-Modular-GameHub-FrameGen-debug
           path: out/VeloWin-Native-arm64-debug.apk
           retention-days: 14
           if-no-files-found: error
