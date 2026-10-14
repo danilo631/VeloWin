@@ -25,16 +25,25 @@ public final class VeloRuntimeBridge {
             ||new File(root,"usr/local/bin/box64").isFile();
         boolean fex=false;
         if(contents!=null){
-            box64=box64||!contents.getProfiles(
-                ContentProfile.ContentType.CONTENT_TYPE_BOX64).isEmpty();
-            fex=!contents.getProfiles(
-                ContentProfile.ContentType.CONTENT_TYPE_FEXCORE).isEmpty();
+            box64=box64||installed(context,contents,
+                ContentProfile.ContentType.CONTENT_TYPE_BOX64);
+            fex=installed(context,contents,
+                ContentProfile.ContentType.CONTENT_TYPE_FEXCORE);
         }
         boolean linux=LinuxRuntime.isInstalled(context);
         boolean proot=LinuxRuntime.prootBinary(context).isFile()
             &&LinuxRuntime.prootLoader(context).isFile();
         return new VeloRuntimePlan.Capabilities(image,box64,fex,
             linux,proot,MaliProfile.isApplied(container));
+    }
+    private static boolean installed(Context context,ContentsManager contents,
+                                     ContentProfile.ContentType type){
+        List<ContentProfile> candidates=contents.getProfiles(type);
+        if(candidates==null)return false;
+        for(ContentProfile profile:candidates){
+            if(ContentsManager.isInstalled(context,profile))return true;
+        }
+        return false;
     }
     public static List<VeloRuntimePlan.Decision> choices(
             Context context,Container c,ContentsManager contents){
