@@ -14,6 +14,8 @@ public final class ComponentCatalog {
     public static ComponentRelease latest(ComponentRelease.Kind kind)throws Exception {
         String url=kind==ComponentRelease.Kind.DXVK
             ?"https://api.github.com/repos/doitsujin/dxvk/releases/latest"
+            :kind==ComponentRelease.Kind.VKD3D_PROTON
+            ?"https://api.github.com/repos/HansKristian-Work/vkd3d-proton/releases/latest"
             :"https://api.github.com/repos/termux/termux-x11/releases/tags/nightly";
         HttpsURLConnection conn=RuntimeCatalog.open(url);
         try{
@@ -30,7 +32,7 @@ public final class ComponentCatalog {
                 }
             }
             JSONObject release=new JSONObject(out.toString("UTF-8"));
-            if(release.optBoolean("draft")|| (kind==ComponentRelease.Kind.DXVK
+            if(release.optBoolean("draft")|| (kind!=ComponentRelease.Kind.TERMUX_X11_APK
                 && release.optBoolean("prerelease")))
                 throw new IOException("Release não é estável.");
             String tag=release.optString("tag_name");
