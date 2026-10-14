@@ -82,7 +82,7 @@ def prepare(source: Path, overlay: Path):
     overlay_sources = overlay / "overlays/velowin-app"
     java_target = source / "app/src/main/app/velowin"
     java_target.mkdir(parents=True, exist_ok=True)
-    for filename in ("VeloWinHomeActivity.java", "FrameGenPolicy.java"):
+    for filename in ("VeloWinHomeActivity.java", "FrameGenPolicy.java", "MaliProfile.java"):
         src = overlay_sources / filename
         if not src.is_file():
             fail("Missing original VeloWin UI module: " + filename)
