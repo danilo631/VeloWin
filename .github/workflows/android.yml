@@ -182,6 +182,18 @@ jobs:
           file app/src/main/assets/velowin-smoke.exe
           file app/src/main/assets/velowin-smoke.exe | grep -Eq 'PE32\+.*x86-64'
           sha256sum app/src/main/assets/velowin-smoke.exe | tee /tmp/velowin-win32-smoke-sha.txt
+      - name: Bundle open-source XKB keyboard layouts for same-UID Xorg
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq xkb-data
+          test -s /usr/share/X11/xkb/rules/evdev
+          test -s /usr/share/X11/xkb/symbols/us
+          mkdir -p app/src/main/assets/xkb
+          for part in rules keycodes types compat symbols geometry; do
+            cp -aL "/usr/share/X11/xkb/$part" app/src/main/assets/xkb/
+          done
+          cp /usr/share/doc/xkb-data/copyright app/src/main/assets/xkb-data-copyright.txt
+          dpkg-query -W xkb-data | tee /tmp/velowin-xkb-version.txt
       - name: Assemble Box64-enabled primary debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
       - name: Confirm APK contains executable Box64
@@ -192,6 +204,8 @@ jobs:
           unzip -l "$APK" | grep -F 'lib/arm64-v8a/libvelobox64.so'
           unzip -l "$APK" | grep -F 'lib/arm64-v8a/libvelowin_probe.so'
           unzip -l "$APK" | grep -F 'assets/velowin-smoke.exe'
+          unzip -l "$APK" | grep -F 'assets/xkb/rules/evdev'
+          unzip -l "$APK" | grep -F 'assets/xkb/symbols/us'
           unzip -p "$APK" lib/arm64-v8a/libvelobox64.so | sha256sum
       - name: Upload Box64 audit
         uses: actions/upload-artifact@v4
@@ -201,6 +215,7 @@ jobs:
             /tmp/velowin-box64-audit.txt
             /tmp/velowin-Box64-LICENSE.txt
             /tmp/velowin-win32-smoke-sha.txt
+            /tmp/velowin-xkb-version.txt
           if-no-files-found: error
           retention-days: 14
       - name: Upload APK
