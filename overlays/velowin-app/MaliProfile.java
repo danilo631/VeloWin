@@ -66,7 +66,7 @@ public final class MaliProfile {
         // Never set guessed GL_VERSION_OVERRIDE / Vulkan version.
         // Retain every non-overridden env variable, preserve order.
         value=value.replaceAll("(?i)(?:^|\\s)mesa_glthread=(?:true|false|0|1)(?=\\s|$)"," ");
-        value=value.trim();
+        value=value.replaceAll("\\s+"," ").trim();
         return value.isEmpty()?"mesa_glthread=false":value+" mesa_glthread=false";
     }
 }
