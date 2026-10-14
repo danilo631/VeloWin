@@ -38,7 +38,7 @@ class ModularGameHubContracts(unittest.TestCase):
                        "FrameGenPolicy.safeTarget"):
             self.assertIn(symbol,UI)
         self.assertIn('Container.DISPLAY_BACKEND_X11',UI)
-        self.assertIn('new Intent(this,UnifiedActivity.class)',UI)
+        self.assertIn('new Intent(this,VeloSettingsActivity.class)',UI)
 
     def test_native_workflow_keeps_audit(self):
         yml=(ROOT/".github/workflows/velowin-native.yml").read_text()
@@ -46,7 +46,7 @@ class ModularGameHubContracts(unittest.TestCase):
         self.assertIn("test_v15_modular.py",yml)
         self.assertIn("FrameGenPolicyTest",yml)
         self.assertIn("VeloWinHomeActivity",yml)
-        self.assertTrue(any(x in yml for x in ("VeloWin-Modular-GameHub-FrameGen-debug", "VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug")))
+        self.assertTrue(any(x in yml for x in ("VeloWin-Modular-GameHub-FrameGen-debug", "VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug", "VeloWin-Recovery-Settings-v18-debug")))
 
 if __name__=="__main__":
     unittest.main()
