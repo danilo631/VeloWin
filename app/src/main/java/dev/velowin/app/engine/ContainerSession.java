@@ -152,6 +152,9 @@ public final class ContainerSession {
                     n->feedback.update("Extraindo template: "+n+" entradas TAR"));
                 return "Template Wineprefix preparado. Agora teste wine cmd /c ver "
                     +"ou wineboot -u. Isso não confirma um servidor gráfico.";
+            case WINE_PREFLIGHT:
+                BionicRelease auditWine=needWine();
+                return WineRuntimeAudit.report(BionicWineInstaller.folder(ctx,auditWine));
             case WINE_VERSION:
                 BionicRelease v=needWine();
                 return probe(wineCommand(v,"--version"),environment(v,false),
@@ -270,20 +273,10 @@ public final class ContainerSession {
         File wineRoot=BionicWineInstaller.folder(ctx,release).getCanonicalFile();
         Box64Tuning.Preset preset=game==null?Box64Tuning.Preset.BALANCED
             :Box64Tuning.fromGame(game.boxPreset);
-        Map<String,String> env=new LinkedHashMap<>(Box64Tuning.environment(preset));
-        env.put("HOME",new File(work,"home").getAbsolutePath());
-        env.put("TMPDIR",new File(work,"tmp").getAbsolutePath());
-        env.put("XDG_CACHE_HOME",new File(work,"cache").getAbsolutePath());
-        env.put("WINEDEBUG","warn+all");
-        env.put("WINEESYNC","0");
-        env.put("WINEFSYNC","0");
-        env.put("BOX64_LD_LIBRARY_PATH",
-            new File(wineRoot,"lib/wine/x86_64-unix").getAbsolutePath()+":"
-            +new File(wineRoot,"lib").getAbsolutePath());
-        // Opt-in: loopback only. An external local X11/PulseAudio server must exist.
-        env.putAll(bridges().environment());
-        if(withPrefix)env.put("WINEPREFIX",needPrefix(release).getAbsolutePath());
-        return env;
+        // Keep the Wine child-process PATH and loader settings consistent with
+        // standalone Wine --version. No Linux/glibc PATH is inherited.
+        return WineLaunchEnvironment.build(wineRoot,work,
+            withPrefix?needPrefix(release):null,preset,bridges().environment(),true);
     }
 
     private BoundedProcess.Result runProbe(List<String> argv,Map<String,String> env,
@@ -327,6 +320,10 @@ public final class ContainerSession {
         try{ wine=needWine(); }
         catch(Exception error){return out.append("2. Wine: NÃO DISPONÍVEL — ")
             .append(error.getMessage()).toString();}
+        out.append("2a. Pré-diagnóstico do pacote Wine:\n")
+            .append(WineRuntimeAudit.report(BionicWineInstaller.folder(ctx,wine)));
+        if(!WineRuntimeAudit.loaderReady(BionicWineInstaller.folder(ctx,wine)))
+            return out.append("PARADO: ELF Wine x86_64/Bionic inválido.").toString();
         BoundedProcess.Result version=runProbe(wineCommand(wine,"--version"),
             environment(wine,false),12000,cancelled);
         out.append("2. Wine --version: ").append(version.summary()).append("\n");
