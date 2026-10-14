@@ -9,6 +9,8 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -69,6 +71,7 @@ public final class ComponentCenterActivity extends Activity {
             if(kind==ComponentRelease.Kind.TERMUX_X11_APK){
                 addButton(body,"Instalar APK externo (confirmação Android)",
                     ()->offerApk(found));
+                addButton(body,"Abrir aplicativo Termux:X11 instalado",this::openX11External);
             }else {
                 addButton(body,"Inspecionar bibliotecas do pacote",
                     ()->report(kind,found));
@@ -211,6 +214,15 @@ public final class ComponentCenterActivity extends Activity {
                 });
             }).show();
     }
+    private void openX11External() {
+        Intent launch=getPackageManager().getLaunchIntentForPackage("com.termux.x11");
+        if(launch==null){
+            message("X11 externo","Termux:X11 não está instalado ou não há Activity visível.");
+            return;
+        }
+        try{startActivity(launch);}
+        catch(Exception error){message("X11 externo",error.getMessage());}
+    }
     private void offerApk(ComponentRelease e) {
         new AlertDialog.Builder(this).setTitle("Termux:X11 externo")
             .setMessage("O Android instalará o aplicativo oficial com confirmação. "
@@ -229,7 +241,22 @@ public final class ComponentCenterActivity extends Activity {
                         running=false;
                         if(isFinishing()||isDestroyed())return;
                         if(!ok){message("Integridade","Falha SHA-256 do APK.");return;}
-                        Intent intent=new Intent(Intent.ACTION_VIEW);
+                        if(Build.VERSION.SDK_INT>=26
+                            && !getPackageManager().canRequestPackageInstalls()){
+                            new AlertDialog.Builder(this).setTitle("Permitir instalador externo?")
+                                .setMessage("O Android precisa autorizar a instalação de APKs "
+                                    +"da origem VeloWin. Volte e pressione instalar novamente "
+                                    +"após conceder a permissão.")
+                                .setNegativeButton("Cancelar",null)
+                                .setPositiveButton("Configurar",(d,w)->{
+                                    Intent settings=new Intent(
+                                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                        Uri.parse("package:"+getPackageName()));
+                                    startActivity(settings);
+                                }).show();
+                            return;
+                        }
+                        Intent intent=new Intent(Intent.ACTION_INSTALL_PACKAGE);
                         intent.setDataAndType(Uri.parse("content://dev.velowin.app.componentapk/termux-x11"),
                             "application/vnd.android.package-archive");
                         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
