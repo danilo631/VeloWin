@@ -63,7 +63,13 @@ public final class BoundedProcess {
         }
 
         Process p=pb.start();
+        // Keep both the beginning (setup errors) and end (Wine's final error or
+        // Win32 success marker). Draining never stops at the capture limit.
+        final int CAP=8192;
         ByteArrayOutputStream capture=new ByteArrayOutputStream(4096);
+        byte[] tail=new byte[CAP];
+        int[] tailLength={0};
+        long[] totalBytes={0};
         AtomicBoolean streamDone=new AtomicBoolean(false);
         Thread drainer=new Thread(()->{
             try(InputStream in=p.getInputStream()){
@@ -71,10 +77,19 @@ public final class BoundedProcess {
                 int n;
                 while((n=in.read(block))>=0) {
                     synchronized(capture) {
-                        if(capture.size()<8192)
-                            capture.write(block,0,Math.min(n,8192-capture.size()));
+                        totalBytes[0]+=n;
+                        if(capture.size()<CAP)
+                            capture.write(block,0,Math.min(n,CAP-capture.size()));
+                        int keep=Math.min(n,CAP);
+                        int remove=Math.max(0,tailLength[0]+keep-CAP);
+                        if(remove>0) {
+                            System.arraycopy(tail,remove,tail,0,tailLength[0]-remove);
+                            tailLength[0]-=remove;
+                        }
+                        System.arraycopy(block,n-keep,tail,tailLength[0],keep);
+                        tailLength[0]+=keep;
                     }
-                    // Intentionally drain after reaching capture cap.
+                    // Intentionally drain even when head and tail are full.
                 }
             }catch(IOException ignored){}finally{streamDone.set(true);}
         },"velowin-probe-output");
@@ -99,6 +114,15 @@ public final class BoundedProcess {
             String output;
             synchronized(capture){
                 output=capture.toString("UTF-8");
+                if(totalBytes[0]>capture.size()) {
+                    // If the streams overlap, omit only the already captured bytes.
+                    int overlap=(int)Math.max(0,
+                        capture.size()+tailLength[0]-totalBytes[0]);
+                    if(totalBytes[0]>capture.size()+tailLength[0])
+                        output+="\n[...saída intermediária omitida...]\n";
+                    output+=new String(tail,overlap,tailLength[0]-overlap,
+                        java.nio.charset.StandardCharsets.UTF_8);
+                }
             }
             if(!streamDone.get()) output+="\n[saída truncada/incompleta]";
             return new Result((timedOut||wasCancelled||p.isAlive())?-1:p.exitValue(),
