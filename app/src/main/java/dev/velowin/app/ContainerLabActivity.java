@@ -247,7 +247,7 @@ public final class ContainerLabActivity extends Activity {
                 try {
                     LocalBridgeManager.put(this,session.sessionId(),
                         choice==1?BridgeProfile.embedded(old.pulseAudio)
-                            :BridgeProfile.of(display,old.pulseAudio));
+                            :BridgeProfile.of(choice==0?-1:display,old.pulseAudio));
                     append("\n[Ponte X11] "+session.bridges().summary()+"\n");
                 }catch(Exception e){append("\n[Erro na configuração X11] "+e.getMessage()+"\n");}
                 dialog.dismiss();
