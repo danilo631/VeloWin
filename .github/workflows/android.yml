@@ -36,6 +36,8 @@ jobs:
             app/src/main/java/dev/velowin/app/engine/SmartProfile.java \
             app/src/main/java/dev/velowin/app/engine/Box64Tuning.java \
             app/src/main/java/dev/velowin/app/engine/BoundedProcess.java \
+            app/src/main/java/dev/velowin/app/engine/WineRuntimeAudit.java \
+            app/src/main/java/dev/velowin/app/engine/WineLaunchEnvironment.java \
             app/src/main/java/dev/velowin/app/engine/FailureClassifier.java \
             app/src/main/java/dev/velowin/app/engine/EngineReadiness.java \
             app/src/main/java/dev/velowin/app/engine/BionicSessionPlan.java \
@@ -58,6 +60,8 @@ jobs:
             tests/SmartProfileTest.java \
             tests/Box64TuningTest.java \
             tests/BoundedProcessTest.java \
+            tests/WineRuntimeAuditTest.java \
+            tests/WineLaunchEnvironmentTest.java \
             tests/FailureClassifierTest.java \
             tests/EngineReadinessTest.java \
             tests/BionicSessionPlanTest.java \
@@ -80,6 +84,8 @@ jobs:
           java -ea -cp /tmp/velowin-tests SmartProfileTest
           java -ea -cp /tmp/velowin-tests Box64TuningTest
           java -ea -cp /tmp/velowin-tests BoundedProcessTest
+          java -ea -cp /tmp/velowin-tests WineRuntimeAuditTest
+          java -ea -cp /tmp/velowin-tests WineLaunchEnvironmentTest
           java -ea -cp /tmp/velowin-tests FailureClassifierTest
           java -ea -cp /tmp/velowin-tests EngineReadinessTest
           java -ea -cp /tmp/velowin-tests BionicSessionPlanTest
