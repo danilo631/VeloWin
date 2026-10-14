@@ -35,7 +35,7 @@ class ComponentCenterContract(unittest.TestCase):
             self.assertIn(word,(SRC/"engine/ContainerSession.java").read_text())
         self.assertIn("!dll.isFile()",overlay)
         self.assertIn("Files.exists(target.toPath()",overlay)
-        self.assertIn("Não sobrescrever",overlay)
+        self.assertIn("não sobrescrever",overlay)
         self.assertIn("getCanonicalFile",overlay)
         self.assertNotIn('Runtime.getRuntime().exec',store)
         self.assertNotIn('"/system/bin/sh"',store)
