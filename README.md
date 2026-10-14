@@ -5,6 +5,28 @@ componentes e executar programas e jogos. O projeto combina uma interface
 própria, inspirada na praticidade de hubs de jogos, com motores open source
 comprovados da comunidade.
 
+## v17 — Bionic, FEX, Linux PRoot e VeloFlow independente
+
+A v17 acrescenta **módulos escritos no VeloWin** de seleção de runtime
+(`VeloRuntimePlan` e `VeloRuntimeBridge`), além de um limitador
+**C11/Vulkan próprio**, incluído nos pipelines DIS do X11 e do
+apresentador de frames. O projeto **não reinstala LSFG** e não obriga
+a GPU Mali a utilizar Turnip.
+
+- **Wine Bionic x86_64 + Box64:** selecionável quando o ImageFS e Box64
+  estão instalados; somente para prefixos x86_64.
+- **Wine ARM64EC + FEXCore:** para prefixos ARM64EC previamente criados
+  e com o pacote FEX instalado. Não troca a arquitetura do prefixo.
+- **Linux glibc/PRoot/Gamescope:** exige LinuxFS, PRoot e contêiner Linux
+  existentes. Não representa um Wineprefix glibc genérico.
+- **glibc externo separado:** proposta futura, desabilitada até haver
+  rootfs, loader, driver e integração de X11/áudio validados.
+
+O **VeloFlow** limita metas fixas ao refresh da tela e inclui proteção
+térmica na seleção, mas a interpolação continua exigindo suporte Vulkan
+real e teste físico. Veja o
+[projeto técnico v17](docs/RUNTIME_BACKENDS_V17.md).
+
 ## Arquitetura da versão v15
 
 | Área | Fonte e implementação |
@@ -59,14 +81,14 @@ Rust com target aarch64-linux-android e bastante espaço livre.
 ```bash
 git clone https://github.com/danilo631/VeloWin.git
 cd VeloWin
-git checkout feature/v15-modular-velowin-gamehub
+git checkout feature/v17-runtime-backends-framepacing
 git submodule update --init --recursive third_party/winnative
 rustup target add aarch64-linux-android
 bash tools/build-native.sh
 ```
 
 A execução CI **VeloWin Modular GameHub Runtime** exporta o artefato
-`VeloWin-Modular-GameHub-FrameGen-debug`, **somente se a build passar**.
+`VeloWin-Runtime-VeloFlow-v17-debug`, **somente se a build passar**.
 O APK usa `dev.velowin.app`. Não misture versões assinadas por chaves debug
 diferentes sem backup prévio dos dados.
 

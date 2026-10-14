@@ -3,6 +3,9 @@ package com.winlator.cmod.velowin;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.Context;
+import android.os.Build;
+import android.os.PowerManager;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -26,6 +29,7 @@ import com.winlator.cmod.runtime.display.XServerDisplayActivity;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -153,6 +157,7 @@ public final class VeloWinHomeActivity extends Activity {
             :"FrameGen desativado";
         card.addView(text(status,12,ACCENT,false));
         button(card,"Entrar no contêiner / Desktop Wine",()->launch(c));
+        button(card,"Método: Bionic / FEX / Linux PRoot",()->runtimeOptions(c));
         button(card,"VeloWin Mali · otimização reversível",()->maliOptions(c));
         button(card,"VeloFlow · geração de quadros",()->graphics(c));
         button(card,"Abrir arquivos e opções avançadas",
@@ -210,6 +215,38 @@ public final class VeloWinHomeActivity extends Activity {
         desktop.putExtra("container_id",c.id);
         startActivity(desktop);
     }
+    private void runtimeOptions(Container c) {
+        if(c==null)return;
+        List<VeloRuntimePlan.Decision> choices;
+        try {
+            choices=VeloRuntimeBridge.choices(this,c,contents);
+        }catch(Exception error){
+            note("Métodos de execução",error.getMessage());return;
+        }
+        String[] labels=new String[choices.size()];
+        for(int i=0;i<choices.size();i++){
+            VeloRuntimePlan.Decision option=choices.get(i);
+            labels[i]=(option.available?"✓ ":"— ")+option.mode.label+
+                (option.available?"":" · "+option.reason);
+        }
+        new AlertDialog.Builder(this)
+            .setTitle("VeloWin · motor de execução")
+            .setMessage("Bionic/Box64 usa Wine x86_64; ARM64EC usa Wine nativo "
+                +"com FEX para x86. Linux glibc/PRoot exige LinuxFS e "
+                +"contêiner Gamescope já instalados. Não convertemos "
+                +"prefixos nem instalamos drivers automaticamente.")
+            .setItems(labels,(d,which)->{
+                VeloRuntimePlan.Decision selected=choices.get(which);
+                if(!selected.available){note(selected.mode.label,selected.reason);return;}
+                try{
+                    VeloRuntimeBridge.select(c,selected);
+                    note("Motor configurado",selected.mode.label+
+                        "\nA próxima entrada no contêiner usa esse modo.");
+                    reload();
+                }catch(Exception ex){note("Seleção recusada",ex.getMessage());}
+            }).setNegativeButton("Cancelar",null).show();
+    }
+
     private void maliOptions(Container c){
         if(c==null)return;
         boolean already=MaliProfile.isApplied(c);
@@ -245,6 +282,7 @@ public final class VeloWinHomeActivity extends Activity {
             PackageManager.FEATURE_VULKAN_HARDWARE_VERSION);
         boolean active="1".equals(c.getExtra("disFrameGen","0"));
         String[] options={"Desativado","OpenFlow/DIS — 2× adaptativo",
+            "VeloFlow econômico · 30 FPS","VeloFlow equilibrado · 45 FPS",
             "OpenFlow/DIS — alvo 60 FPS","OpenFlow/DIS — alvo 90 FPS",
             "OpenFlow/DIS — alvo 120 FPS"};
         new AlertDialog.Builder(this).setTitle("VeloWin FrameGen · "+c.getName())
@@ -260,8 +298,17 @@ public final class VeloWinHomeActivity extends Activity {
                     note("Vulkan não detectado","Mantenha FrameGen desativado "
                         +"ou verifique os drivers no menu avançado.");return;
                 }
-                int[] targets={0,0,60,90,120};
-                int fps=FrameGenPolicy.targetFps(targets[which]);
+                int[] targets={0,0,30,45,60,90,120};
+                float refresh=getWindowManager().getDefaultDisplay().getRefreshRate();
+                PowerManager power=(PowerManager)getSystemService(Context.POWER_SERVICE);
+                int thermal=(Build.VERSION.SDK_INT>=29 && power!=null)
+                    ?power.getCurrentThermalStatus():0;
+                int fps=FrameGenPolicy.safeTarget(targets[which],refresh,thermal);
+                if(which!=0 && targets[which]!=0 && fps==0){
+                    note("VeloFlow", "Taxa do painel inválida para um alvo fixo; "
+                        +"use o modo adaptativo ou desligue FrameGen.");
+                    return;
+                }
                 if(which==0){
                     c.putExtra("disFrameGen","0");
                     c.putExtra("frameGen","0");
@@ -277,9 +324,11 @@ public final class VeloWinHomeActivity extends Activity {
     }
     private int selectedFrameGenItem(String fps) {
         switch(fps) {
-            case "60": return 2;
-            case "90": return 3;
-            case "120": return 4;
+            case "30": return 2;
+            case "45": return 3;
+            case "60": return 4;
+            case "90": return 5;
+            case "120": return 6;
             default: return 1;
         }
     }

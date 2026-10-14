@@ -19,6 +19,12 @@ public final class FrameGenPolicyTest {
         boolean bad=false;
         try{FrameGenPolicy.targetFps(333);}catch(IllegalArgumentException expected){bad=true;}
         check(bad,"reject invalid frame pacing");
+        check(FrameGenPolicy.safeTarget(120,60.0f,0)==60,"60Hz panel cap");
+        check(FrameGenPolicy.safeTarget(90,120.0f,0)==90,"90Hz target");
+        check(FrameGenPolicy.safeTarget(120,120.0f,2)==60,"moderate thermal cap");
+        check(FrameGenPolicy.safeTarget(90,120.0f,4)==30,"severe thermal cap");
+        check(FrameGenPolicy.safeTarget(0,120.0f,4)==0,"adaptive remains adaptive");
+        check(FrameGenPolicy.safeTarget(120,Float.NaN,0)==0,"unknown panel fail closed");
         System.out.println("VeloWin FrameGenPolicyTest PASS");
     }
 }

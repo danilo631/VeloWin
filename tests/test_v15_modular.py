@@ -35,7 +35,7 @@ class ModularGameHubContracts(unittest.TestCase):
                        'c.putExtra("disFrameGenScale","70")',
                        '"disFrameGenTargetFps"',
                        'c.saveData()', 'PackageManager.FEATURE_VULKAN_HARDWARE_VERSION',
-                       "FrameGenPolicy.targetFps"):
+                       "FrameGenPolicy.safeTarget"):
             self.assertIn(symbol,UI)
         self.assertIn('Container.DISPLAY_BACKEND_X11',UI)
         self.assertIn('new Intent(this,UnifiedActivity.class)',UI)
@@ -46,7 +46,7 @@ class ModularGameHubContracts(unittest.TestCase):
         self.assertIn("test_v15_modular.py",yml)
         self.assertIn("FrameGenPolicyTest",yml)
         self.assertIn("VeloWinHomeActivity",yml)
-        self.assertTrue("VeloWin-Modular-GameHub-FrameGen-debug" in yml or "VeloWin-VeloFlow-Mali-debug" in yml)
+        self.assertTrue(any(x in yml for x in ("VeloWin-Modular-GameHub-FrameGen-debug", "VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug")))
 
 if __name__=="__main__":
     unittest.main()
