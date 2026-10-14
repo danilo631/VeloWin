@@ -37,6 +37,7 @@ jobs:
           submodules: false
       - name: Validate complete native engine source pin
         run: |
+          python3 -m py_compile tools/prepare-winnative.py
           python3 -m unittest discover -s tests -p test_v14_native_mixer.py -v
           python3 -m unittest discover -s tests -p test_v15_modular.py -v
           mkdir -p /tmp/velowin-framegen-test
