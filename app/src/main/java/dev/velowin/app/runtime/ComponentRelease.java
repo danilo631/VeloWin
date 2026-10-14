@@ -2,7 +2,7 @@ package dev.velowin.app.runtime;
 
 /** Verified metadata from the official upstream GitHub release endpoint. */
 public final class ComponentRelease {
-    public enum Kind { DXVK, TERMUX_X11_APK }
+    public enum Kind { DXVK, VKD3D_PROTON, TERMUX_X11_APK }
     public final Kind kind;
     public final String tag,name,url,sha256;
     public final long size;
