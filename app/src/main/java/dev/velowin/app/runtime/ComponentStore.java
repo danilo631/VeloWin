@@ -38,6 +38,9 @@ public final class ComponentStore {
         if(!f.isDirectory()&&!f.mkdirs())throw new IOException("Pasta de componentes indisponível.");
         return f;
     }
+    public static File folder(Context ctx,ComponentRelease release)throws IOException {
+        return root(ctx,release);
+    }
     private static File root(Context ctx,ComponentRelease release)throws IOException {
         if(!ComponentReleasePolicy.valid(release))throw new IOException("Manifesto inválido.");
         String namespace=release.kind==ComponentRelease.Kind.DXVK?"dxvk"
