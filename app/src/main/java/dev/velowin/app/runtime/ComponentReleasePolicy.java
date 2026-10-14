@@ -14,6 +14,14 @@ public final class ComponentReleasePolicy {
             if(!name.equals("dxvk-"+version+".tar.gz"))return null;
             return "https://github.com/doitsujin/dxvk/releases/download/"+tag+"/"+name;
         }
+        if(kind==ComponentRelease.Kind.VKD3D_PROTON) {
+            if(!tag.matches("v[0-9]{1,3}\\.[0-9]{1,3}(\\.[0-9]{1,3})?"))
+                return null;
+            String version=tag.substring(1);
+            if(!name.equals("vkd3d-proton-"+version+".tar.zst"))return null;
+            return "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/"
+                +tag+"/"+name;
+        }
         if(kind==ComponentRelease.Kind.TERMUX_X11_APK) {
             if(!"nightly".equals(tag)||!"termux-x11-universal-debug.apk".equals(name))
                 return null;
