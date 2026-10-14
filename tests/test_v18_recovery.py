@@ -12,7 +12,7 @@ class RecoveryContracts(unittest.TestCase):
             "postDelayed","35000L","reportLaunchFailure",
             "VeloSettingsActivity.class","ContentDialog.alert"):
             self.assertIn(token,p)
-        self.assertIn("windows/wfm.exe",load("overlays/velowin-app/VeloSessionDiagnostics.java"))
+        self.assertIn('"wfm.exe"',load("overlays/velowin-app/VeloSessionDiagnostics.java"))
         self.assertIn("ImageFs",load("overlays/velowin-app/VeloSessionDiagnostics.java"))
     def test_original_settings_replace_winnative_dashboard(self):
         home=load("overlays/velowin-app/VeloWinHomeActivity.java")
