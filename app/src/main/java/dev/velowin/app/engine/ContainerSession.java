@@ -129,7 +129,7 @@ public final class ContainerSession {
         switch(action) {
             case HELP: return ContainerCommand.manual();
             case STATUS: return status();
-            case BRIDGE_PROBE: return LocalBridgeManager.probe(bridges());
+            case BRIDGE_PROBE: return LocalBridgeManager.probe(ctx,bridges());
             case DIAGNOSE: return runGuided(cancelled,feedback);
             case FILES: return files();
             case PREFIX_STATUS:
@@ -175,8 +175,10 @@ public final class ContainerSession {
             case X11_WINDOW_PROBE:
                 if(!bridges().x11Enabled())
                     throw new IOException("Selecione uma ponte X11 local antes de abrir janelas.");
-                if(LocalBridgeManager.handshakeX11(bridges().x11Port())
-                    !=X11Protocol.Reply.ACCEPTED)
+                X11Protocol.Reply x11Status=bridges().embeddedX11()
+                    ?LocalBridgeManager.handshakeEmbeddedX11(ctx)
+                    :LocalBridgeManager.handshakeX11(bridges().x11Port());
+                if(x11Status!=X11Protocol.Reply.ACCEPTED)
                     throw new IOException("Servidor X11 não confirmou o protocolo. "
                         +"Verifique XServer local, porta e autenticação.");
                 BionicRelease guiWine=needWine();
@@ -333,7 +335,7 @@ public final class ContainerSession {
     /** A transparent manual wizard: never starts wineboot or imports an arbitrary EXE. */
     private String runGuided(AtomicBoolean cancelled,Feedback feedback) throws Exception {
         StringBuilder out=new StringBuilder("DIAGNÓSTICO GUIADO VELOWIN\n");
-        out.append("Pontes locais:\n").append(LocalBridgeManager.probe(bridges()))
+        out.append("Pontes locais:\n").append(LocalBridgeManager.probe(ctx,bridges()))
             .append("\n\n");
         feedback.update("Etapa 1/5: inicializar Box64");
         if(!Box64Smoke.bundled(ctx))
