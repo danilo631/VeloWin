@@ -114,9 +114,16 @@ jobs:
     name: Build original VeloWin APK
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Verify pinned Termux X11 sources are available
+        run: |
+          test -s third_party/termux-x11/lorie/src/main/cpp/CMakeLists.txt
+          test "$(git -C third_party/termux-x11 rev-parse HEAD)" = "fa3a8b430e2896a19f44c99a9cb056254615ae06"
+          test -s third_party/termux-x11/LICENSE
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -129,11 +136,11 @@ jobs:
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
           test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018"
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018" "ndk;29.0.14206865"
       - name: Install native Box64 cross-compile tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq cmake ninja-build file gcc-mingw-w64-x86-64
+          sudo apt-get install -y -qq cmake ninja-build file gcc-mingw-w64-x86-64 bison flex python3 pkg-config autoconf automake libtool
       - name: Download pinned Box64 Bionic source
         run: |
           git clone -q https://github.com/ptitSeb/box64.git /tmp/box64-src
