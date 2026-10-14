@@ -1,0 +1,137 @@
+name: VeloWin Full Native Runtime
+
+on:
+  push:
+    branches: [main, feature/v14-native-clean-main]
+    paths:
+      - .gitmodules
+      - tools/prepare-winnative.py
+      - .github/workflows/velowin-native.yml
+      - tests/test_v14_native_mixer.py
+      - README.md
+      - LICENSE-NATIVE.md
+      - settings.gradle
+      - build.gradle
+      - tools/build-native.sh
+      - LICENSE
+      - docs/NATIVE_ENGINE_V14.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: velowin-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contract:
+    name: Check upstream pin and source policies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Validate complete native engine source pin
+        run: python3 -m unittest discover -s tests -p test_v14_native_mixer.py -v
+
+  native-apk:
+    name: Build full XServer + Wine/Proton + Box64 VeloWin APK
+    needs: source-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GIT_LFS_SKIP_SMUDGE: "1"
+      GRADLE_OPTS: "-Xmx4g -XX:+UseG1GC"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 1
+      - name: Clone pinned engine and its real native submodules
+        run: |
+          set -euo pipefail
+          git submodule update --init third_party/winnative
+          git -C third_party/winnative submodule update --init --recursive --jobs 4
+          test "$(git -C third_party/winnative rev-parse HEAD)" = "8409085f706acbc0749881d9bf1e85f2f347dfd4"
+          test -s third_party/winnative/app/src/main/runtime/display/XServerDisplayActivity.java
+          test -s third_party/winnative/app/src/main/runtime/display/environment/components/XServerComponent.java
+          test -s third_party/winnative/app/src/main/runtime/container/ContainerManager.java
+          test -s third_party/winnative/LICENSE
+      - name: Restore binary assets from the engine's Git LFS store
+        run: |
+          set -euo pipefail
+          git -C third_party/winnative lfs install --local
+          git -C third_party/winnative lfs pull
+          test -s third_party/winnative/app/src/main/assets/imagefs.tzst || \
+            test -s third_party/winnative/app/src/main/assets/imagefs.part1.tzst
+          git -C third_party/winnative lfs ls-files | head -15 || true
+      - name: Set up Java 17 and Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+      - name: Install Android SDK and pinned NDK
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" \
+            "cmake;3.22.1" "ndk;27.3.13750724"
+      - name: Set up Rust Android and native dependencies
+        run: |
+          set -euo pipefail
+          rustup target add aarch64-linux-android
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build cmake file pkg-config bison flex
+      - name: Prepare VeloWin branding, independent APK ID and GPL source notices
+        run: |
+          set -euo pipefail
+          python3 tools/prepare-winnative.py --source third_party/winnative --root .
+          test -f third_party/winnative/app/src/main/assets/velowin/legal/WinNative-LICENSE
+          test -f third_party/winnative/app/src/main/assets/velowin/legal/WinNative-CREDITS.md
+          test -f third_party/winnative/app/src/main/assets/velowin/legal/WinNative-EMULATOR_CREDITS.md
+      - name: Assemble REAL WinNative graphical container runtime as VeloWin
+        working-directory: third_party/winnative
+        timeout-minutes: 120
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:assembleStandardDebug --no-daemon --stacktrace --build-cache \
+            -PVERSION_NAME=VeloWin-Native-v14-dev
+      - name: Audit VeloWin identity, graphical components and license in APK
+        run: |
+          set -euo pipefail
+          APK="third_party/winnative/app/build/outputs/apk/standard/debug/standard.apk"
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$AAPT" dump badging "$APK" | tee /tmp/velowin-v14-aapt.txt
+          grep -F "package: name='dev.velowin.app'" /tmp/velowin-v14-aapt.txt
+          grep -F "application-label:'VeloWin'" /tmp/velowin-v14-aapt.txt
+          unzip -l "$APK" | tee /tmp/velowin-v14-apk-files.txt > /dev/null
+          grep -F "assets/velowin/legal/WinNative-LICENSE" /tmp/velowin-v14-apk-files.txt
+          grep -F "assets/velowin/legal/WinNative-CREDITS.md" /tmp/velowin-v14-apk-files.txt
+          grep -F "assets/velowin/legal/VELO-WIN-NOTICE.txt" /tmp/velowin-v14-apk-files.txt
+          grep -F "classes.dex" /tmp/velowin-v14-apk-files.txt
+          sha256sum "$APK" | tee /tmp/velowin-v14-sha256.txt
+          mkdir -p out
+          cp "$APK" out/VeloWin-Native-arm64-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VeloWin-Native-Full-Container-debug
+          path: out/VeloWin-Native-arm64-debug.apk
+          retention-days: 14
+          if-no-files-found: error
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VeloWin-Native-Licenses-BuildAudit
+          path: |
+            /tmp/velowin-v14-aapt.txt
+            /tmp/velowin-v14-sha256.txt
+            third_party/winnative/app/src/main/assets/velowin/legal/
+          retention-days: 14
+          if-no-files-found: error
