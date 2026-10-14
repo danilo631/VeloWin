@@ -26,7 +26,7 @@ public class BoundedProcessTest {
             Arrays.asList("/usr/bin/seq","1","6000"),base,
             Collections.emptyMap(),4000,new AtomicBoolean(false));
         ok(verbose.code==0 && !verbose.timeout,"long output finished");
-        ok(verbose.output.startsWith("1\\n"),"first diagnostic lines preserved");
+        ok(verbose.output.startsWith("1\n"),"first diagnostic lines preserved");
         ok(verbose.output.contains("6000"),"final Win32 marker can survive verbose output");
         ok(verbose.output.contains("saída intermediária omitida"),"truncation is explicit");
         System.out.println("BoundedProcessTest PASS");
