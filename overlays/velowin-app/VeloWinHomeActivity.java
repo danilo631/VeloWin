@@ -75,7 +75,7 @@ public final class VeloWinHomeActivity extends Activity {
         super.onResume();
         if(screen==null)return;
         if(!SetupWizardActivity.isSetupComplete(this)
-            || !ImageFs.find(this).isUpToDate){
+            || !ImageFs.find(this).isUpToDate()){
             // The original wizard installs the real ImageFS/Wine components.
             buttonIfMissingSetup();
             return;
@@ -160,7 +160,7 @@ public final class VeloWinHomeActivity extends Activity {
     private void createContainer(){
         if(working){note("Operação ativa","A criação anterior ainda está em execução.");return;}
         if(!SetupWizardActivity.isSetupComplete(this)
-            ||!ImageFs.find(this).isUpToDate){
+            ||!ImageFs.find(this).isUpToDate()){
             buttonIfMissingSetup();return;
         }
         if(contents==null||containers==null){
@@ -201,7 +201,7 @@ public final class VeloWinHomeActivity extends Activity {
     }
     private void launch(Container c){
         if(c==null || containers==null){note("Falha","Contêiner indisponível.");return;}
-        if(!ImageFs.find(this).isUpToDate){
+        if(!ImageFs.find(this).isUpToDate()){
             buttonIfMissingSetup();return;
         }
         // Actual Wine + Box64 + XServer + Android Surface execution, not a console stub.
