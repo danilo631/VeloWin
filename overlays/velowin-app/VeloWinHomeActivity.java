@@ -282,6 +282,7 @@ public final class VeloWinHomeActivity extends Activity {
             PackageManager.FEATURE_VULKAN_HARDWARE_VERSION);
         boolean active="1".equals(c.getExtra("disFrameGen","0"));
         String[] options={"Desativado","OpenFlow/DIS — 2× adaptativo",
+            "VeloFlow econômico · 30 FPS","VeloFlow equilibrado · 45 FPS",
             "OpenFlow/DIS — alvo 60 FPS","OpenFlow/DIS — alvo 90 FPS",
             "OpenFlow/DIS — alvo 120 FPS"};
         new AlertDialog.Builder(this).setTitle("VeloWin FrameGen · "+c.getName())
@@ -297,7 +298,7 @@ public final class VeloWinHomeActivity extends Activity {
                     note("Vulkan não detectado","Mantenha FrameGen desativado "
                         +"ou verifique os drivers no menu avançado.");return;
                 }
-                int[] targets={0,0,60,90,120};
+                int[] targets={0,0,30,45,60,90,120};
                 float refresh=getWindowManager().getDefaultDisplay().getRefreshRate();
                 PowerManager power=(PowerManager)getSystemService(Context.POWER_SERVICE);
                 int thermal=(Build.VERSION.SDK_INT>=29 && power!=null)
@@ -323,9 +324,11 @@ public final class VeloWinHomeActivity extends Activity {
     }
     private int selectedFrameGenItem(String fps) {
         switch(fps) {
-            case "60": return 2;
-            case "90": return 3;
-            case "120": return 4;
+            case "30": return 2;
+            case "45": return 3;
+            case "60": return 4;
+            case "90": return 5;
+            case "120": return 6;
             default: return 1;
         }
     }
