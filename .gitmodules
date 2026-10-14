@@ -1,0 +1,3 @@
+[submodule "third_party/winnative"]
+	path = third_party/winnative
+	url = https://github.com/WinNative-Emu/WinNative.git

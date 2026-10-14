@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""
+Prepare the *actual* consolidated WinNative/Winlator Android runtime as VeloWin.
+
+This script edits only the pinned git submodule working tree before Gradle builds.
+The original GPLv3 upstream sources remain publicly traceable via their gitlink;
+no native/X11 implementation is reinvented or replaced with a diagnostic console.
+"""
+import argparse
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+UPSTREAM_SHA = "8409085f706acbc0749881d9bf1e85f2f347dfd4"
+APPLICATION_ID = "dev.velowin.app"
+APP_LABEL = "VeloWin"
+
+def fail(message):
+    raise SystemExit("VeloWin upstream integration: " + message)
+
+def replace_exact(path: Path, old: str, new: str, count: int):
+    data = path.read_text(encoding="utf-8")
+    actual = data.count(old)
+    if actual == 0 and data.count(new) == count:
+        return
+    if actual != count:
+        fail(f"{path}: expected {count} anchors {old!r}, got {actual}")
+    path.write_text(data.replace(old, new), encoding="utf-8")
+
+def prepare(source: Path, overlay: Path):
+    source = source.resolve()
+    overlay = overlay.resolve()
+    if not source.is_dir() or not (source / "LICENSE").is_file():
+        fail("WinNative source checkout is missing. Run git submodule update --init --recursive third_party/winnative")
+    try:
+        commit = subprocess.check_output(
+            ["git", "-C", str(source), "rev-parse", "HEAD"], text=True
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        fail("Could not verify the WinNative git revision")
+    if commit != UPSTREAM_SHA:
+        fail(f"Refusing unpinned code: expected {UPSTREAM_SHA}, got {commit}")
+    license_text = (source / "LICENSE").read_text(encoding="utf-8")
+    if "GNU GENERAL PUBLIC LICENSE" not in license_text or "Version 3" not in license_text:
+        fail("Pinned engine does not carry expected GPLv3 source license")
+    if not (source / "app/src/main/runtime/display/XServerDisplayActivity.java").is_file():
+        fail("Missing real X11 Surface/renderer component")
+    if not (source / "app/src/main/runtime/container/ContainerManager.java").is_file():
+        fail("Missing real container manager")
+    if not (source / "app/src/main/runtime/display/environment/components/XServerComponent.java").is_file():
+        fail("Missing real X11 server component")
+
+    gradle = source / "app/build.gradle"
+    replace_exact(gradle, 'applicationId "com.winnative.cmod"',
+                  'applicationId "' + APPLICATION_ID + '"', 2)
+
+    translations = list((source / "app/src/main/res").glob("values*/strings.xml"))
+    if not translations:
+        fail("No Android string resource files")
+    changed = 0
+    pattern = re.compile(r'(<string name="common_ui_app_name">)([^<]*)(</string>)')
+    for file in translations:
+        raw = file.read_text(encoding="utf-8")
+        new, hits = pattern.subn(lambda m: m.group(1) + APP_LABEL + m.group(3), raw)
+        if hits:
+            file.write_text(new, encoding="utf-8")
+            changed += hits
+    if changed == 0:
+        fail("No application name strings matched")
+    # Preserve upstream package/java namespace! The applicationId is intentionally
+    # independent, so BuildConfig, ContentProviders and manifest placeholders
+    # should refer to Android's real installed package.
+    manifests = [source / "app/src/main/AndroidManifest.xml"]
+    for p in manifests:
+        if '@string/common_ui_app_name' not in p.read_text(encoding="utf-8"):
+            fail("Launcher must use the localized app name resource")
+    # Keep all upstream notices with the binary distributed to end users.
+    assets = source / "app/src/main/assets/velowin/legal"
+    assets.mkdir(parents=True, exist_ok=True)
+    for filename in ("LICENSE", "CREDITS.md", "EMULATOR_CREDITS.md"):
+        original = source / filename
+        if not original.is_file():
+            fail(f"GPL source attribution file is missing: {filename}")
+        shutil.copyfile(original, assets / ("WinNative-" + filename))
+    prior = overlay / "LICENSE"
+    if prior.is_file():
+        shutil.copyfile(prior, assets / "VeloWin-original-MIT-LICENSE.txt")
+    note = (
+        "VeloWin Native — consolidated runtime\n"
+        "Application ID: dev.velowin.app\n"
+        "Source: https://github.com/WinNative-Emu/WinNative\n"
+        "Pinned WinNative commit: " + UPSTREAM_SHA + "\n"
+        "Combined VeloWin/WinNative APK distribution: GNU GPL version 3.\n"
+        "Original VeloWin MIT portions retain their copyright notice.\n"
+        "Full corresponding sources and build scripts:\n"
+        "https://github.com/danilo631/VeloWin\n"
+        "Winlator, Mesa, DXVK, Wine, FEX, Box64, Termux:X11 and further authors\n"
+        "are credited in WinNative-CREDITS.md / WinNative-EMULATOR_CREDITS.md.\n"
+        "Termux:X11 is a study/reference checkout; the embedded display\n"
+        "in this flavor comes from WinNative's XServer, not Termux:Lorie.\n"
+    )
+    (assets / "VELO-WIN-NOTICE.txt").write_text(note, encoding="utf-8")
+    print(f"VeloWin: full native graphical engine pinned to {commit}")
+    print("VeloWin: package=" + APPLICATION_ID +
+          "; Android app name=" + APP_LABEL + f"; labels patched={changed}")
+    print("VeloWin: XServer, Wine container manager and GPL credits confirmed.")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source", default="third_party/winnative")
+    parser.add_argument("--root", default=".")
+    args = parser.parse_args()
+    prepare(Path(args.source), Path(args.root))
