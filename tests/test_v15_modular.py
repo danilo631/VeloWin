@@ -21,7 +21,7 @@ class ModularGameHubContracts(unittest.TestCase):
                        "new Intent(this,XServerDisplayActivity.class)",
                        'desktop.putExtra("container_id",c.id)',
                        "new ContentsManager(", "contents.syncContents()",
-                       "ImageFs.find(this).isUpToDate",
+                       "ImageFs.find(this).isUpToDate()",
                        "SetupWizardActivity.isSetupComplete(this)"):
             self.assertIn(symbol,UI)
         self.assertNotIn("ContainerLabActivity",UI)
