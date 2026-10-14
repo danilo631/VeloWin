@@ -3,6 +3,11 @@
 name: Investigate embedded X11 NDK upstream
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/v11-component-center-dxvk
+    paths:
+      - .github/workflows/x11-upstream-ndk.yml
 
 permissions:
   contents: read
