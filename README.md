@@ -2,6 +2,12 @@
 
 **VeloWin** é um aplicativo Android independente para gerenciamento de jogos Windows e desenvolvimento de uma pilha de compatibilidade sem depender do código do Winlator. A experiência privilegia biblioteca simples, perfis automáticos, diagnóstico integrado e recursos avançados opcionais — inspiração de usabilidade em apps como GameHub, mas com código, marca e UI próprios.
 
+## Navegação de arquivos do contêiner (branch v0.10 experimental)
+
+A opção **Entrar no contêiner** ganhou **Explorar arquivos do contêiner**: navegador Android privado que abre a pasta do jogo, prefixo, unidade `C:` Wine, runtime e logs, com voltar, prévia de texto, criação de pastas e importação SAF para a área gravável do jogo. Não executa shell nem EXE através do navegador. Prefixo, runtime, logs e workspace do motor são somente leitura. O APK segue usando a versão interna 0.8.0-dev até validação.
+
+A navegação é Android nativa; a integração do XServer NDK de Termux:X11, a Surface Windows e os controles Wine ainda não estão prontos. Consulte [navegação e arquitetura X11](docs/CONTAINER_NAVIGATION_V10.md) para o procedimento de teste e as limitações reais.
+
 ## VeloWin 0.8.0-dev — diagnóstico guiado + X11 e áudio externos (opcionais)
 
 A **main** passa a incluir o comando guiado `diagnose` no console Bionic. O VeloWin executa sequencialmente Box64, Wine, preparação de Wineprefix, CMD e um teste Win32 próprio, mostrando a **primeira etapa que falhou**. A confirmação do teste Win32 exige código de saída 0 e um marcador exato, sem timeout/cancelamento.
