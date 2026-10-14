@@ -11,7 +11,7 @@ public final class ContainerCommand {
     public enum Action {
         HELP, STATUS, CLEAR, BOX64_VERSION, WINE_VERSION, PREFIX_PREPARE,
         PREFIX_STATUS, WINEBOOT, CMD_VERSION, WIN32_SMOKE, RUN_EXE, STOP_WIN_SERVER, FILES,
-        BRIDGE_PROBE, DIAGNOSE, WINE_PREFLIGHT
+        BRIDGE_PROBE, DIAGNOSE, WINE_PREFLIGHT, X11_WINDOW_PROBE
     }
 
     private ContainerCommand() {}
@@ -31,6 +31,7 @@ public final class ContainerCommand {
             case "wineboot -u": case "wineboot --init": return Action.WINEBOOT;
             case "wine cmd /c ver": case "cmd /c ver": return Action.CMD_VERSION;
             case "win32 test": case "teste win32": return Action.WIN32_SMOKE;
+            case "wine notepad": case "x11 window": return Action.X11_WINDOW_PROBE;
             case "run exe": case "testar exe": return Action.RUN_EXE;
             case "wineserver -k": case "stop": return Action.STOP_WIN_SERVER;
             case "files": case "arquivos": return Action.FILES;
@@ -42,7 +43,8 @@ public final class ContainerCommand {
 
     public static boolean requiresConsent(Action action) {
         return action == Action.WINEBOOT || action == Action.RUN_EXE
-            || action == Action.WIN32_SMOKE || action == Action.DIAGNOSE;
+            || action == Action.WIN32_SMOKE || action == Action.DIAGNOSE
+            || action == Action.X11_WINDOW_PROBE;
     }
 
     public static String manual() {
@@ -57,6 +59,7 @@ public final class ContainerCommand {
             + "prefix status       — verificar prefixo\n"
             + "wineboot -u         — inicialização experimental Wine (confirmação)\n"
             + "wine cmd /c ver     — executar programa Win32 sem janela\n"
+            + "wine notepad        — tentar janela Wine em X11 já conectado\n"
             + "win32 test          — executável de teste do próprio VeloWin\n"
             + "run exe             — tentar EXE importado (confirmação)\n"
             + "wineserver -k       — solicitar encerramento do wineserver\n"
