@@ -8,10 +8,12 @@ git -C third_party/winnative submodule update --init --recursive
 test "$(git -C third_party/winnative rev-parse HEAD)" = "8409085f706acbc0749881d9bf1e85f2f347dfd4"
 git -C third_party/winnative lfs pull
 python3 tools/prepare-winnative.py --source third_party/winnative --root .
+python3 tools/strip-lsfg.py --source third_party/winnative --root .
+python3 tools/patch-v17.py --source third_party/winnative --root .
 (
   cd third_party/winnative
   ./gradlew :app:assembleStandardDebug --no-daemon \
-      -PVERSION_NAME=VeloWin-Modular-v15-dev
+      -PVERSION_NAME=VeloWin-Runtime-v17-dev
 )
 APK="third_party/winnative/app/build/outputs/apk/standard/debug/standard.apk"
 test -s "$APK"
