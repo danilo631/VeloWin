@@ -50,7 +50,7 @@ def patch(source,root):
     new='vkr_dis_configure(r->dis, r->dis_scale,\n'
     new+='                       veloflow_safe_target(r->dis_target_fps, r->framegen_refresh_rate,\n'
     new+='                                            0.0f, 2u), r->framegen_refresh_rate);'
-    s=once(s,old,new,"X11 DIS pacing")
+    if s.count(old)!=3:\n        raise RuntimeError("X11 DIS pacing calls changed; expected three guarded sites")\n    s=s.replace(old,new)
     renderer.write_text(s)
     print("VeloFlow: C11 FPS governor compiled into real X11 renderer and native presenter")
 
