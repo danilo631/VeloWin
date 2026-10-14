@@ -5,6 +5,7 @@ import dev.velowin.app.library.Game;
 import dev.velowin.app.runtime.ComponentRegistry;
 import dev.velowin.app.runtime.ComponentRelease;
 import dev.velowin.app.runtime.ComponentStore;
+import dev.velowin.app.runtime.WinePackageInstaller;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -155,7 +156,10 @@ public final class GameGraphicsOverlay {
         }catch(Exception fail){
             for(File installedFile:installed)installedFile.delete();
             throw fail;
-        }finally{stage.delete();}
+        }finally{
+            // Remove any incomplete staging DLLs without touching game-owned files.
+            WinePackageInstaller.deleteTree(stage);
+        }
     }
 
     public static String overrides(Context ctx,Game game,String profile)throws IOException {
