@@ -22,7 +22,8 @@ class VeloWinV08Test(unittest.TestCase):
         for item in ('runGuided(cancelled,feedback)',"Etapa 1/5",
                      'wineCommand(wine,"cmd","/c","ver")',
                      'ownSmokeBinary(cancelled)',
-                     'Win32ProbeVerdict.passed','env.putAll(bridges().environment())'):
+                     'Win32ProbeVerdict.passed','bridges().environment()',
+                     'WineLaunchEnvironment.build'):
             self.assertIn(item,session)
         self.assertNotIn("new ProcessBuilder",session)
 
