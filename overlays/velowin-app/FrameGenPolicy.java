@@ -17,6 +17,22 @@ public final class FrameGenPolicy {
             return fps;
         throw new IllegalArgumentException("FPS não suportado.");
     }
+    /** Clamp a fixed target to actual panel refresh and current thermal headroom.
+     * Adaptive target 0 remains adaptive in the real Vulkan DIS scheduler.
+     * Android thermal levels match PowerManager's status values, but no
+     * Android dependency is required here (unit-testable JVM policy).
+     */
+    public static int safeTarget(int requested,float panelHz,int thermalStatus) {
+        int target=targetFps(requested);
+        if(target==0)return 0;
+        if(!Float.isFinite(panelHz)||panelHz<30.0f)return 0;
+        int panel=(int)Math.floor(panelHz+0.25f);
+        if(panel>240)panel=240;
+        int max=panel;
+        if(thermalStatus>=4)max=Math.min(max,30);
+        else if(thermalStatus>=2)max=Math.min(max,60);
+        return Math.min(target,max);
+    }
     public static boolean wantsDis(String mode) {
         return DIS.equals(mode);
     }
