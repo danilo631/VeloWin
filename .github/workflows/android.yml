@@ -2,7 +2,9 @@ name: VeloWin Android
 
 on:
   push:
-    branches: [main, 'feature/**']
+    # Legacy Bionic console builds only. v14 uses velowin-native.yml and
+    # never ships EmbeddedX11Service/ContainerLabActivity as primary app.
+    branches: [main, 'feature/v09-*', 'feature/v10-*', 'feature/v11-*', 'feature/v12-*', 'feature/v13-*']
   pull_request:
     branches: [main]
   workflow_dispatch:
