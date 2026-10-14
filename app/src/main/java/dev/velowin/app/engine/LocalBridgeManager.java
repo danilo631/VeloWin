@@ -2,6 +2,9 @@ package dev.velowin.app.engine;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.LocalSocket;
+import android.net.LocalSocketAddress;
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -33,7 +36,8 @@ public final class LocalBridgeManager {
             SharedPreferences p=store(ctx);
             int display=p.getInt(id+".display",-1);
             boolean pulse=p.getBoolean(id+".pulse",false);
-            return BridgeProfile.of(display,pulse);
+            return display==-2
+                ?BridgeProfile.embedded(pulse):BridgeProfile.of(display,pulse);
         }catch(IllegalArgumentException | ClassCastException ignored){
             return BridgeProfile.disabled();
         }
@@ -54,6 +58,30 @@ public final class LocalBridgeManager {
             client.connect(new InetSocketAddress("127.0.0.1",port),900);
             return true;
         }catch(IOException | SecurityException failure) {return false;}
+    }
+
+    public static X11Protocol.Reply handshakeEmbeddedX11(Context ctx) {
+        if(ctx==null)return X11Protocol.Reply.NOT_X11;
+        try {
+            File tmp=new File(BionicWorkspace.prepare(ctx),"tmp");
+            File socket=new File(tmp,".X11-unix/X0");
+            if(!socket.getCanonicalPath().startsWith(tmp.getCanonicalPath()+File.separator))
+                return X11Protocol.Reply.NOT_X11;
+            try(LocalSocket client=new LocalSocket()) {
+                client.connect(new LocalSocketAddress(socket.getAbsolutePath(),
+                    LocalSocketAddress.Namespace.FILESYSTEM));
+                client.setSoTimeout(1500);
+                client.getOutputStream().write(X11Protocol.setupRequest());
+                client.getOutputStream().flush();
+                byte[] header=new byte[8];int read=0;
+                while(read<header.length) {
+                    int n=client.getInputStream().read(header,read,header.length-read);
+                    if(n<0)break;
+                    read+=n;
+                }
+                return X11Protocol.parseReply(read==header.length?header:null);
+            }
+        }catch(Exception ignored){return X11Protocol.Reply.NOT_X11;}
     }
 
     public static X11Protocol.Reply handshakeX11(int port) {
@@ -81,9 +109,20 @@ public final class LocalBridgeManager {
         return X11Protocol.description(handshakeX11(port));
     }
 
+    public static String probe(Context ctx,BridgeProfile profile) {
+        if(profile.embeddedX11()) {
+            return "X11 embutido UNIX DISPLAY=:0 — "
+                +X11Protocol.description(handshakeEmbeddedX11(ctx))
+                +"\\nPonte Wine/áudio ainda requer validação física.";
+        }
+        return probe(profile);
+    }
+
     public static String probe(BridgeProfile profile) {
         StringBuilder b=new StringBuilder("Pontes TCP locais — sem autenticar protocolos:\n");
-        if(profile.x11Enabled()) {
+        if(profile.embeddedX11()) {
+            b.append("X11 embutido UNIX: use probe(Context,BridgeProfile)\\n");
+        }else if(profile.x11Enabled()) {
             b.append("X11 127.0.0.1:").append(profile.x11Port())
                 .append(": ").append(inspectX11(profile.x11Port()))
                 .append("\n");
