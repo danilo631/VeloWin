@@ -38,6 +38,9 @@ import dev.velowin.app.engine.Box64Smoke;
 import dev.velowin.app.engine.Box64Tuning;
 import dev.velowin.app.engine.WineVersionSmoke;
 import dev.velowin.app.engine.WinePrefixManager;
+import dev.velowin.app.engine.GameGraphicsOverlay;
+import dev.velowin.app.runtime.ComponentRegistry;
+import dev.velowin.app.runtime.ComponentRelease;
 import dev.velowin.app.engine.GameRuntimeChoice;
 import dev.velowin.app.engine.GameSessionConfig;
 import dev.velowin.app.engine.BionicSessionPlan;
@@ -384,7 +387,7 @@ public final class MainActivity extends Activity {
                 "Preparar prefixo Windows", "Pré-verificação de sessão",
                 "Resolução virtual e FPS", "Renderizador Direct3D",
                 "Testar Wine deste jogo", "Compartilhar perfil",
-                "Abrir contêiner Bionic (novo)"}, (d, which) -> {
+                "Abrir contêiner Bionic (novo)", "Instalar/remover DLLs gráficas"}, (d, which) -> {
                 switch (which) {
                     case 0: message("Motor não disponível", EngineGate.reason(this, game)); break;
                     case 1: chooseBackend(game); break;
@@ -407,6 +410,7 @@ public final class MainActivity extends Activity {
                     case 15: gameWineSmoke(game); break;
                     case 16: shareGameProfile(game); break;
                     case 17: openContainer(game); break;
+                    case 18: manageGraphicsOverlay(game); break;
                 }
             })
             .setNegativeButton("Fechar", null).show();
@@ -581,6 +585,69 @@ public final class MainActivity extends Activity {
                 message("Preferência salva",options[index]+
                     ". Ainda não há limitador de frames de jogos integrado.");
             }).setNegativeButton("Cancelar",null).show();
+    }
+
+
+    private void manageGraphicsOverlay(Game game) {
+        if(busy){message("Tarefa em andamento","Finalize antes de alterar DLLs.");return;}
+        String current=GameGraphicsOverlay.status(this,game);
+        new AlertDialog.Builder(this).setTitle("Direct3D real · "+game.title)
+            .setMessage(current+"\n\nDLLs são copiadas somente para a pasta privada do "
+                +"jogo; conteúdo original nunca é sobrescrito. "
+                +"Isso não comprova Vulkan nem janelas Wine.")
+            .setNegativeButton("Fechar",null)
+            .setNeutralButton("Remover camada",(dialog,which)->graphicsOperation(
+                game,null,true))
+            .setPositiveButton("Escolher DXVK/VKD3D",(dialog,which)->{
+                String[] options={"DXVK (D3D9/10/11)","VKD3D-Proton (D3D12)"};
+                new AlertDialog.Builder(this).setTitle("Camada gráfica")
+                    .setItems(options,(d,index)->{
+                        ComponentRelease.Kind kind=index==0
+                            ?ComponentRelease.Kind.DXVK:ComponentRelease.Kind.VKD3D_PROTON;
+                        ComponentRelease entry=ComponentRegistry.get(this,kind);
+                        if(entry==null){
+                            new AlertDialog.Builder(this).setTitle("Componente ausente")
+                                .setMessage("Baixe o pacote verificado em Central de Componentes.")
+                                .setNegativeButton("Cancelar",null)
+                                .setPositiveButton("Abrir Central",(dd,w)->
+                                    startActivity(new Intent(this,ComponentCenterActivity.class)))
+                                .show();
+                            return;
+                        }
+                        new AlertDialog.Builder(this).setTitle("Injetar "+kind+"?")
+                            .setMessage("Pacote SHA-256 verificado: "+entry.tag
+                                +"\nDLLs Windows x64 serão copiadas somente para esta "
+                                +"pasta de jogo; exige Box64, Wine, X11 e GPU compatível. "
+                                +"Nenhum programa será iniciado.")
+                            .setNegativeButton("Cancelar",null)
+                            .setPositiveButton("Aplicar",(dd,w)->graphicsOperation(game,kind,false))
+                            .show();
+                    }).show();
+            }).show();
+    }
+
+    private void graphicsOperation(Game game,ComponentRelease.Kind kind,boolean remove) {
+        if(busy){message("Tarefa ativa","Finalize a operação atual.");return;}
+        busy=true;
+        worker.execute(()->{
+            String result=null;Exception error=null;
+            try {
+                result=remove?"Injeção Direct3D removida do diretório privado.":
+                    GameGraphicsOverlay.deploy(getApplicationContext(),game,kind);
+                if(remove)GameGraphicsOverlay.remove(getApplicationContext(),game);
+            }catch(Exception fail){error=fail;}
+            final Exception problem=error;final String output=result;
+            runOnUiThread(()->{
+                busy=false;
+                if(isFinishing()||isDestroyed())return;
+                if(problem!=null){message("Falha na camada Direct3D",errorText(problem));return;}
+                game.renderApi=remove?"WINED3D"
+                    :kind==ComponentRelease.Kind.DXVK?"DXVK":"VKD3D";
+                saveGame(game);
+                message("Componente do jogo",output+"\n"
+                    +"Não há confirmação de renderização de jogos Windows.");
+            });
+        });
     }
 
     private void chooseDirect3d(Game game) {
