@@ -22,6 +22,8 @@ import dev.velowin.app.engine.ContainerSession;
 import dev.velowin.app.engine.BionicWorkspace;
 import dev.velowin.app.engine.BridgeProfile;
 import dev.velowin.app.engine.LocalBridgeManager;
+import dev.velowin.app.engine.EmbeddedX11Service;
+import dev.velowin.app.engine.X11Protocol;
 import dev.velowin.app.library.Game;
 import dev.velowin.app.library.GameStore;
 
@@ -155,6 +157,17 @@ public final class ContainerLabActivity extends Activity {
         bridgeRow.addView(x11,xl);
         bridgeRow.addView(button("Áudio Pulse local",this::configurePulse,false),
             new LinearLayout.LayoutParams(0,-2,1f));
+        LinearLayout xserverControls=new LinearLayout(this);
+        xserverControls.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams xserverParams=new LinearLayout.LayoutParams(-1,-2);
+        xserverParams.topMargin=dp(6);
+        actions.addView(xserverControls,xserverParams);
+        Button startX=button("Iniciar X11 NDK",this::startEmbeddedX11,false);
+        Button viewX=button("Tela X11",this::openEmbeddedX11Display,false);
+        Button stopX=button("Parar X11",this::stopEmbeddedX11,false);
+        xserverControls.addView(startX,new LinearLayout.LayoutParams(0,-2,1f));
+        xserverControls.addView(viewX,new LinearLayout.LayoutParams(0,-2,1f));
+        xserverControls.addView(stopX,new LinearLayout.LayoutParams(0,-2,1f));
 
         LinearLayout consoleArea=new LinearLayout(this);
         consoleArea.setOrientation(LinearLayout.VERTICAL);
@@ -226,6 +239,61 @@ public final class ContainerLabActivity extends Activity {
         Intent intent=new Intent(this,ContainerFilesActivity.class);
         if(game!=null)intent.putExtra("game_id",game.id);
         startActivity(intent);
+    }
+
+    private void startEmbeddedX11() {
+        if(running){append("[Finalize o teste Wine antes de iniciar X11]\\n");return;}
+        new AlertDialog.Builder(this).setTitle("Iniciar XServer Android/NDK?")
+            .setMessage("Xorg do Termux:X11 (GPLv3) será iniciado num processo "
+                +"isolado :velowin_x11, usando somente socket UNIX privado, "
+                +"sem expor TCP. Caso falhe, consulte logcat pela tag VeloWin-X11. "
+                +"A inicialização não garante uma janela Wine.")
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton("Iniciar",(dialog,button)->{
+                try {
+                    LocalBridgeManager.put(this,session.sessionId(),
+                        BridgeProfile.embedded(session.bridges().pulseAudio));
+                    Intent service=new Intent(this,EmbeddedX11Service.class);
+                    service.setAction(EmbeddedX11Service.START);
+                    startService(service);
+                    append("\\n[X11] Inicialização solicitada. Execute 'bridge status' "
+                        +"para confirmar o handshake UNIX e depois abra Tela X11.\\n");
+                }catch(Exception e){append("\\n[X11] Falha: "+e+"\\n");}
+            }).show();
+    }
+
+    private void openEmbeddedX11Display() {
+        worker.execute(()->{
+            final X11Protocol.Reply reply=LocalBridgeManager.handshakeEmbeddedX11(
+                getApplicationContext());
+            runOnUiThread(()->{
+                if(isFinishing()||isDestroyed())return;
+                if(reply!=X11Protocol.Reply.ACCEPTED){
+                    append("\\n[X11] Socket não pronto: "
+                        +X11Protocol.description(reply)+"\\n");
+                    return;
+                }
+                try{
+                    startActivity(new Intent(this,com.termux.x11.MainActivity.class));
+                }catch(Exception error){append("\\n[X11] Falha da Surface: "+error+"\\n");}
+            });
+        });
+    }
+
+    private void stopEmbeddedX11(){
+        if(running){append("[Finalize o teste Wine antes de parar X11]\\n");return;}
+        new AlertDialog.Builder(this).setTitle("Parar XServer?")
+            .setMessage("O processo Xorg isolado será encerrado; janelas Wine "
+                +"conectadas podem falhar. Nenhum prefixo ou jogo será apagado.")
+            .setNegativeButton("Cancelar",null)
+            .setPositiveButton("Parar",(dialog,button)->{
+                try{
+                    Intent stop=new Intent(this,EmbeddedX11Service.class);
+                    stop.setAction(EmbeddedX11Service.STOP);
+                    startService(stop);
+                    append("\\n[X11] Solicitação de encerramento enviada.\\n");
+                }catch(Exception e){append("\\n[X11] Falha ao parar: "+e+"\\n");}
+            }).show();
     }
 
     private void configureX11() {
