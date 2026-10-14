@@ -79,12 +79,32 @@ def prepare(source: Path, overlay: Path):
     # VeloWin's own application-facing shell. Keep the battle-tested
     # XServer/renderer/ContainerManager from the Winlator-derived runtime,
     # but do NOT ship a WinNative UI copy as the Android launcher.
+    # An independently compilable :velowin-core Java library, owned by VeloWin.
+    # Replacing Wine/XServer later only requires a new VeloEnginePort adapter.
+    original_core = overlay / "modules/velowin-core"
+    copied_core = source / "velowin-core"
+    if not (original_core / "build.gradle").is_file():
+        fail("VeloWin independent core module is missing")
+    shutil.copytree(original_core, copied_core, dirs_exist_ok=True)
+    settings = source / "settings.gradle"
+    settings_text = settings.read_text(encoding="utf-8")
+    if "include ':velowin-core'" not in settings_text:
+        settings.write_text(settings_text+"\ninclude ':velowin-core'\n",
+            encoding="utf-8")
+    app_gradle = source / "app/build.gradle"
+    app_code = app_gradle.read_text(encoding="utf-8")
+    anchor = "    implementation project(':framegen')"
+    if app_code.count(anchor)!=1:
+        fail("Upstream Gradle engine project anchor changed")
+    app_gradle.write_text(app_code.replace(anchor,
+        "    implementation project(':velowin-core')\n"+anchor),encoding="utf-8")
     overlay_sources = overlay / "overlays/velowin-app"
     java_target = source / "app/src/main/app/velowin"
     java_target.mkdir(parents=True, exist_ok=True)
     for filename in ("VeloWinHomeActivity.java", "FrameGenPolicy.java", "MaliProfile.java",
                      "VeloRuntimePlan.java", "VeloRuntimeBridge.java", "VeloBootTarget.java",
-                     "VeloSettingsActivity.java", "VeloSessionDiagnostics.java"):
+                     "VeloSettingsActivity.java", "VeloSessionDiagnostics.java",
+                     "VeloBenchActivity.java", "VeloEngineAdapter.java"):
         src = overlay_sources / filename
         if not src.is_file():
             fail("Missing original VeloWin UI module: " + filename)
@@ -129,6 +149,13 @@ def prepare(source: Path, overlay: Path):
             android:exported="false"
             android:theme="@style/AppTheme"
             android:screenOrientation="fullUser"/>
+"""
+    new_launcher += """
+        <activity
+            android:name="com.winlator.cmod.velowin.VeloBenchActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="sensorLandscape"/>
 """
     if manifest.count("</application>") != 1:
         fail("Android manifest application node changed.")
