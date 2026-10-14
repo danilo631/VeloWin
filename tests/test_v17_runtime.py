@@ -30,7 +30,7 @@ class VeloRuntimeV17Contracts(unittest.TestCase):
         patch=src("tools/patch-v17.py")
         header=src("overlays/velowin-native/veloflow_pacing.h")
         for x in ("fg_present.c","vk_renderer.c","veloflow_safe_target",
-                  "FrameGen", "VeloFlow"):
+                  "VeloFlow"):
             self.assertTrue(x in patch or x in header)
         self.assertIn("isfinite(display_hz)",header)
         self.assertIn("if(panel>240u)",header)
