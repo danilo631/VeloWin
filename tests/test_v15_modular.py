@@ -19,7 +19,7 @@ class ModularGameHubContracts(unittest.TestCase):
     def test_real_container_and_wine_desktop_not_fake_shell(self):
         for symbol in ("new ContainerManager(", "ContainerCreation.createContainerAsync(",
                        "new VeloEngineAdapter(this,containers).launch(",
-                       'desktop.putExtra("container_id",c.id)',
+                       'new VeloEnginePort.LaunchRequest(c.id',
                        "new ContentsManager(", "contents.syncContents()",
                        "ImageFs.find(this).isUpToDate()",
                        "SetupWizardActivity.isSetupComplete(this)"):
@@ -32,7 +32,7 @@ class ModularGameHubContracts(unittest.TestCase):
     def test_framegen_triggers_real_dis_pipeline(self):
         for symbol in ('c.putExtra("disFrameGen","1")',
                        'c.putExtra("frameGen","0")',
-                       'c.putExtra("disFrameGenScale","70")',
+                       'c.putExtra("disFrameGenScale",String.valueOf(quality.minSide))',
                        '"disFrameGenTargetFps"',
                        'c.saveData()', 'PackageManager.FEATURE_VULKAN_HARDWARE_VERSION',
                        "FrameGenPolicy.safeTarget"):
