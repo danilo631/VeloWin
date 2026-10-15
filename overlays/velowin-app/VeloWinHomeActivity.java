@@ -366,10 +366,21 @@ public final class VeloWinHomeActivity extends Activity {
                 " px no menor eixo (custo GPU relativo "+q.costWeight+")";
             if(q==VeloFlowProfile.normalize(existing))active=i;
         }
+        android.content.SharedPreferences lab=getSharedPreferences(
+            "velowin_gpu_lab",MODE_PRIVATE);
+        int suggested=lab.getInt("quality_side",0);
+        long age=System.currentTimeMillis()-lab.getLong("measured_at",0L);
+        boolean recent=age>=0&&age<7L*24L*60L*60L*1000L;
+        String benchHint=recent && (suggested==180||suggested==252||suggested==360)
+            ? "VeloBench GLES3 mediu p95="+lab.getFloat("p95_frame_ms",0f)
+                +" ms / "+lab.getInt("cubes",0)+" cubos e sugeriu "+
+                suggested+" px; é uma indicação, não prova do DIS."
+            : "Nenhum teste 3D recente salvo. É possível testar no VeloBench.";
         new AlertDialog.Builder(this).setTitle("VeloFlow • qualidade DIS")
             .setMessage("Esses valores são resoluções reais do optical flow. "
                 +"O valor legado 70 podia selecionar 360 px (o mais caro). "
-                +"Para Mali, comece em 180 e aumente apenas se houver folga.")
+                +"Para Mali, comece em 180 e aumente apenas se houver folga.\n\n"
+                +benchHint)
             .setSingleChoiceItems(options,active,(dialog,index)->{
                 c.putExtra("disFrameGenScale",String.valueOf(modes[index].minSide));
                 c.saveData();dialog.dismiss();reload();
