@@ -129,7 +129,9 @@ def patch(source):
         '        android.util.Log.w("VeloWinSession", "X11 cursor/surface exists, "',
         "35s warning")
     code=replace_once(code,
+        "    protected void onDestroy() {\n"
         "        activityDestroyed.set(true);",
+        "    protected void onDestroy() {\n"
         "        activityDestroyed.set(true);\n"
         "        if (container != null) com.winlator.cmod.velowin."
         "VeloSessionJournal.markStopped(container.id);",
