@@ -1,12 +1,17 @@
-name: VeloWin Native Recovery and Settings
+name: VeloWin Independent Core + VeloBench 3D
 
 on:
   push:
-    branches: [main, feature/v14-native-clean-main, feature/v15-modular-velowin-gamehub, feature/v16-veloflow-mali-native-modules, feature/v17-runtime-backends-framepacing, feature/v18-black-screen-recovery-settings]
+    branches: [main, feature/v14-native-clean-main, feature/v15-modular-velowin-gamehub, feature/v16-veloflow-mali-native-modules, feature/v17-runtime-backends-framepacing, feature/v18-black-screen-recovery-settings, feature/v19-core-module-gpu-benchmark]
     paths:
       - .gitmodules
       - tools/prepare-winnative.py
       - 'overlays/velowin-app/**'
+      - 'modules/velowin-core/**'
+      - tests/VeloCoreTest.java
+      - tests/VeloSessionLifecycleTest.java
+      - tests/test_v19_modular.py
+      - tests/test_v20_benchmark.py
       - 'overlays/velowin-native/**'
       - tools/strip-lsfg.py
       - tools/patch-v17.py
@@ -30,6 +35,8 @@ on:
       - tools/build-native.sh
       - LICENSE
       - docs/NATIVE_ENGINE_V14.md
+      - docs/BENCHMARK_LIFECYCLE_V20.md
+      - docs/SESSION_OBSERVABILITY_V20.md
   workflow_dispatch:
 
 permissions:
@@ -55,6 +62,15 @@ jobs:
           python3 -m unittest discover -s tests -p test_v16_veloflow.py -v
           python3 -m unittest discover -s tests -p test_v17_runtime.py -v
           python3 -m unittest discover -s tests -p test_v18_recovery.py -v
+          python3 -m unittest discover -s tests -p test_v19_modular.py -v
+          python3 -m unittest discover -s tests -p test_v20_benchmark.py -v
+          mkdir -p /tmp/velowin-core-test
+          javac -d /tmp/velowin-core-test \
+            modules/velowin-core/src/main/java/dev/velowin/core/*.java \
+            tests/VeloCoreTest.java
+          java -ea -cp /tmp/velowin-core-test VeloCoreTest
+          javac -cp /tmp/velowin-core-test -d /tmp/velowin-core-test tests/VeloSessionLifecycleTest.java
+          java -ea -cp /tmp/velowin-core-test VeloSessionLifecycleTest
           mkdir -p /tmp/velowin-boot-test
           javac -d /tmp/velowin-boot-test \
             overlays/velowin-app/VeloBootTarget.java tests/VeloBootTargetTest.java
@@ -137,6 +153,14 @@ jobs:
           python3 tools/patch-v18.py --source third_party/winnative
           test -s third_party/winnative/app/src/main/app/velowin/VeloSettingsActivity.java
           test -s third_party/winnative/app/src/main/app/velowin/VeloBootTarget.java
+          test -s third_party/winnative/app/src/main/app/velowin/VeloBenchActivity.java
+          test -s third_party/winnative/app/src/main/app/velowin/VeloSessionJournal.java
+          grep -Fq "VeloSessionJournal.markWindow" third_party/winnative/app/src/main/runtime/display/XServerDisplayActivity.java
+          test -s third_party/winnative/velowin-core/build.gradle
+          grep -Fq "implementation project(':velowin-core')" \
+            third_party/winnative/app/build.gradle
+          grep -Fq "include ':velowin-core'" \
+            third_party/winnative/settings.gradle
           grep -Fq "checkVeloWinFirstWindow" \
             third_party/winnative/app/src/main/runtime/display/XServerDisplayActivity.java
           # Source-level audit: only disabled ABI remains; no LSFG shader chain.
@@ -159,7 +183,7 @@ jobs:
           set -euo pipefail
           chmod +x gradlew
           ./gradlew :app:assembleStandardDebug --no-daemon --stacktrace --build-cache \
-            -PVERSION_NAME=VeloWin-Recovery-v18-dev
+            -PVERSION_NAME=VeloWin-Core-v19-dev
       - name: Audit VeloWin identity, graphical components and license in APK
         run: |
           set -euo pipefail
@@ -183,7 +207,7 @@ jobs:
           cp "$APK" out/VeloWin-Native-arm64-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: VeloWin-Recovery-Settings-v18-debug
+          name: VeloWin-VeloBench-v19-debug
           path: out/VeloWin-Native-arm64-debug.apk
           retention-days: 14
           if-no-files-found: error

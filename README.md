@@ -5,6 +5,31 @@ componentes e executar programas e jogos. O projeto combina uma interface
 própria, inspirada na praticidade de hubs de jogos, com motores open source
 comprovados da comunidade.
 
+## v19 — núcleo independente + laboratório 3D GPU
+
+A v19 mantém a sessão Wine/Box64/X11 funcional da v18, mas separa código
+**original do VeloWin** em `:velowin-core`, uma biblioteca Java sem importações
+do Android/WinNative, com uma API pública `VeloEnginePort` para substituir
+futuramente o motor de execução. A integração Winlator/WinNative fica concentrada
+no `VeloEngineAdapter`, em vez de ser chamada diretamente pela Home.
+
+A Home agora inclui **VeloBench 3D**, benchmark **OpenGL ES 3.0 real**
+com cubos iluminados, carga 8/48/128, FPS médio, 1% low e p95.
+A cena é inspirada na metodologia GPL do [glmark2](https://github.com/glmark2/glmark2),
+não é glmark2 oficial nem mede FPS interpolado no Wine.
+
+Foi corrigida uma escala do **OpenFlow/DIS**: o antigo valor `70` era
+interpretado pelo renderer como 70% de 720, selecionando 360 px, o
+nível mais caro. O painel permite escolher **180/252/360 px reais**,
+mostra a recomendação do VeloBench após amostras suficientes e mantém
+as configurações por contêiner. O DIS que já funciona continua integrado.
+
+O motor completo ainda é compilado com o **checkout fixo do WinNative**:
+esta é uma extração de componentes independente, **não a remoção total do
+submódulo**. A migração do XServer, Wine, ImageFS e JNI ainda exige
+portabilidade e testes físicos. Confira
+[arquitetura e testes v19](docs/INDEPENDENT_CORE_V19.md).
+
 ## v17 — Bionic, FEX, Linux PRoot e VeloFlow independente
 
 A v17 acrescenta **módulos escritos no VeloWin** de seleção de runtime

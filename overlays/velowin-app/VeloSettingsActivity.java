@@ -109,8 +109,11 @@ public final class VeloSettingsActivity extends Activity {
         label(container.getName()+"  •  Wine: "+container.getWineVersion(),15,false);
         label("Sessão",16,true);
         button("Entrar no desktop Windows",()->{
-            Intent i=new Intent(this,com.winlator.cmod.runtime.display.XServerDisplayActivity.class);
-            i.putExtra(CONTAINER_ID,container.id);startActivity(i);
+            try {
+                new VeloEngineAdapter(this,manager).launch(
+                    new dev.velowin.core.VeloEnginePort.LaunchRequest(container.id,
+                        dev.velowin.core.VeloEnginePort.LaunchKind.WINDOWS_DESKTOP,""));
+            } catch(Exception error){message("Falha ao entrar",error.getMessage());}
         });
         button("Modo seguro — corrigir tela preta",()->{
             new AlertDialog.Builder(this).setTitle("Recuperação de desktop")

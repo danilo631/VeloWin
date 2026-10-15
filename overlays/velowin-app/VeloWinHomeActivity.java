@@ -24,10 +24,11 @@ import com.winlator.cmod.runtime.container.ContainerCreation;
 import com.winlator.cmod.runtime.container.ContainerManager;
 import com.winlator.cmod.runtime.content.ContentProfile;
 import com.winlator.cmod.runtime.content.ContentsManager;
-import com.winlator.cmod.runtime.display.XServerDisplayActivity;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
 
 import java.util.ArrayList;
+import dev.velowin.core.VeloEnginePort;
+import dev.velowin.core.VeloFlowProfile;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -103,6 +104,7 @@ public final class VeloWinHomeActivity extends Activity {
         button(screen,"+ Criar contêiner Windows",this::createContainer);
         button(screen,"Configurações • VeloWin",
             ()->startActivity(new Intent(this,VeloSettingsActivity.class)));
+        button(screen,"Teste 3D GPU • VeloBench",()->startActivity(new Intent(this,VeloBenchActivity.class)));
         button(screen,"Atualizar lista",this::reload);
         ScrollView scroll=new ScrollView(this);
         list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
@@ -155,10 +157,13 @@ public final class VeloWinHomeActivity extends Activity {
             ?"OpenFlow/DIS "+c.getExtra("disFrameGenTargetFps","0")+" FPS alvo"
             :"FrameGen desativado";
         card.addView(text(status,12,ACCENT,false));
+        card.addView(text("Sessão observada: "+VeloSessionJournal.describe(c.id),
+            11,MUTED,false));
         button(card,"Entrar no contêiner / Desktop Wine",()->launch(c));
         button(card,"Método: Bionic / FEX / Linux PRoot",()->runtimeOptions(c));
         button(card,"VeloWin Mali · otimização reversível",()->maliOptions(c));
         button(card,"VeloFlow · geração de quadros",()->graphics(c));
+        button(card,"Qualidade VeloFlow • 180/252/360px",()->flowQuality(c));
         button(card,"Arquivos, áudio e configurações",
             ()->{
                 Intent settings=new Intent(this,VeloSettingsActivity.class);
@@ -229,10 +234,12 @@ public final class VeloWinHomeActivity extends Activity {
         if(!ImageFs.find(this).isUpToDate()){
             buttonIfMissingSetup();return;
         }
-        // Actual Wine + Box64 + XServer + Android Surface execution, not a console stub.
-        Intent desktop=new Intent(this,XServerDisplayActivity.class);
-        desktop.putExtra("container_id",c.id);
-        startActivity(desktop);
+        // The ONLY upstream Wine/XServer API is in the replaceable adapter.
+        try {
+            new VeloEngineAdapter(this,containers).launch(
+                new VeloEnginePort.LaunchRequest(c.id,
+                    VeloEnginePort.LaunchKind.WINDOWS_DESKTOP,""));
+        } catch(Exception e) { note("Falha no motor Windows",e.getMessage()); }
     }
     private void runtimeOptions(Container c) {
         if(c==null)return;
@@ -334,10 +341,49 @@ public final class VeloWinHomeActivity extends Activity {
                 }else{
                     c.putExtra("frameGen","0"); // LSFG and DIS are mutually exclusive.
                     c.putExtra("disFrameGen","1");
-                    c.putExtra("disFrameGenScale","70");
+                    VeloFlowProfile.Quality quality=VeloFlowProfile.normalize(
+                        Integer.parseInt(c.getExtra("disFrameGenScale","252")));
+                    c.putExtra("disFrameGenScale",String.valueOf(quality.minSide));
                     c.putExtra("disFrameGenTargetFps",String.valueOf(fps));
                 }
                 c.setDisplayBackend(Container.DISPLAY_BACKEND_X11);
+                c.saveData();dialog.dismiss();reload();
+            }).setNegativeButton("Cancelar",null).show();
+    }
+    private void flowQuality(Container c){
+        if(c.isGamescopeRuntime()) {
+            note("VeloFlow","O perfil DIS é para o desktop Windows X11.");
+            return;
+        }
+        int existing;
+        try{existing=Integer.parseInt(c.getExtra("disFrameGenScale","252"));}
+        catch(NumberFormatException ignored){existing=252;}
+        VeloFlowProfile.Quality[] modes=VeloFlowProfile.Quality.values();
+        String[] options=new String[modes.length];
+        int active=1;
+        for(int i=0;i<modes.length;i++){
+            VeloFlowProfile.Quality q=modes[i];
+            options[i]=q.label+" · "+q.minSide+
+                " px no menor eixo (custo GPU relativo "+q.costWeight+")";
+            if(q==VeloFlowProfile.normalize(existing))active=i;
+        }
+        android.content.SharedPreferences lab=getSharedPreferences(
+            "velowin_gpu_lab",MODE_PRIVATE);
+        int suggested=lab.getInt("quality_side",0);
+        long age=System.currentTimeMillis()-lab.getLong("measured_at",0L);
+        boolean recent=age>=0&&age<7L*24L*60L*60L*1000L;
+        String benchHint=recent && (suggested==180||suggested==252||suggested==360)
+            ? "VeloBench GLES3 mediu p95="+lab.getFloat("p95_frame_ms",0f)
+                +" ms / "+lab.getInt("cubes",0)+" cubos e sugeriu "+
+                suggested+" px; é uma indicação, não prova do DIS."
+            : "Nenhum teste 3D recente salvo. É possível testar no VeloBench.";
+        new AlertDialog.Builder(this).setTitle("VeloFlow • qualidade DIS")
+            .setMessage("Esses valores são resoluções reais do optical flow. "
+                +"O valor legado 70 podia selecionar 360 px (o mais caro). "
+                +"Para Mali, comece em 180 e aumente apenas se houver folga.\n\n"
+                +benchHint)
+            .setSingleChoiceItems(options,active,(dialog,index)->{
+                c.putExtra("disFrameGenScale",String.valueOf(modes[index].minSide));
                 c.saveData();dialog.dismiss();reload();
             }).setNegativeButton("Cancelar",null).show();
     }

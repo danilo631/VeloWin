@@ -101,6 +101,41 @@ def patch(source):
                     this, getString(R.string.preloader_launch_failed, message), this::exit);
             }'''
     code=replace_once(code,old,new,"persistent error on launch crash")
+    # Instrument only upstream callbacks backed by real Wine/X11 activity.
+    code=replace_once(code,
+        "                        setupXEnvironment();",
+        "                        if (container != null) com.winlator.cmod.velowin."
+        "VeloSessionJournal.markXServer(container.id);\n"
+        "                        setupXEnvironment();\n"
+        "                        if (container != null) com.winlator.cmod.velowin."
+        "VeloSessionJournal.markWaiting(container.id);",
+        "XServer stages")
+    code=replace_once(code,
+        "        ensureWinePrefixEssentialFiles();",
+        "        ensureWinePrefixEssentialFiles();\n"
+        "        if (container != null) com.winlator.cmod.velowin."
+        "VeloSessionJournal.markWine(container.id);",
+        "Wine stages")
+    code=replace_once(code,
+        "    private void onFirstGuestWindow() {",
+        "    private void onFirstGuestWindow() {\n"
+        "        if (container != null) com.winlator.cmod.velowin."
+        "VeloSessionJournal.markWindow(container.id);",
+        "real mapped window")
+    code=replace_once(code,
+        '        android.util.Log.w("VeloWinSession", "X11 cursor/surface exists, "',
+        '        if (container != null) com.winlator.cmod.velowin.'
+        'VeloSessionJournal.warnNoWindow(container.id);\n'
+        '        android.util.Log.w("VeloWinSession", "X11 cursor/surface exists, "',
+        "35s warning")
+    code=replace_once(code,
+        "    protected void onDestroy() {\n"
+        "        activityDestroyed.set(true);",
+        "    protected void onDestroy() {\n"
+        "        activityDestroyed.set(true);\n"
+        "        if (container != null) com.winlator.cmod.velowin."
+        "VeloSessionJournal.markStopped(container.id);",
+        "session teardown")
     if code.count("checkVeloWinFirstWindow")!=2:
         raise RuntimeError("unexpected watchdog call sites")
     path.write_text(code,encoding="utf-8")

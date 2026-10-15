@@ -14,7 +14,7 @@ python3 tools/patch-v18.py --source third_party/winnative
 (
   cd third_party/winnative
   ./gradlew :app:assembleStandardDebug --no-daemon \
-      -PVERSION_NAME=VeloWin-Recovery-v18-dev
+      -PVERSION_NAME=VeloWin-Core-v19-dev
 )
 APK="third_party/winnative/app/build/outputs/apk/standard/debug/standard.apk"
 test -s "$APK"
