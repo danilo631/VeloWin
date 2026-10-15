@@ -169,7 +169,7 @@ public final class VeloBenchActivity extends Activity {
         renderer.halt();
         if(surface!=null)surface.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
         GpuBenchMetrics.Snapshot data=renderer.snapshot();
-        if(data.sampleSize<2) {
+        if(!renderer.isCurrentRunReady()||data.sampleSize<2) {
             hud.setText("Nenhuma amostra válida. Execute novamente.");
             return;
         }
@@ -208,7 +208,10 @@ public final class VeloBenchActivity extends Activity {
     }
     @Override public void onPause(){
         if(renderer!=null)renderer.halt();
-        if(surface!=null)surface.onPause();
+        if(surface!=null){
+            surface.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+            surface.onPause();
+        }
         super.onPause();
     }
     @Override public void onResume(){super.onResume();if(surface!=null)surface.onResume();}
@@ -271,6 +274,7 @@ public final class VeloBenchActivity extends Activity {
             running=true;
         }
         void halt(){running=false;}
+        boolean isCurrentRunReady(){return activeRunId==requestedRunId;}
         int getRunId(){return requestedRunId;}
         long elapsedMs(){
             return startedNs==0?0:

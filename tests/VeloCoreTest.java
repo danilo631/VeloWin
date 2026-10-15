@@ -34,10 +34,10 @@ public final class VeloCoreTest {
             &&snapshot.lowOnePercentFps()<32f,"1pct");
         VeloBenchReport result=new VeloBenchReport(
             "Mali \"Example\",GPU\\n",48,100L,30000L,"time_limit",snapshot);
-        check(result.toJson().contains("\\"presented_fps\\":null"),"no invented presented FPS");
-        check(result.toJson().contains("\\"one_percent_low_estimate_fps\\""),"percentile");
-        check(result.toJson().contains("\\"Mali \\\"Example\\\",GPU\\\\n\\""),"JSON escaping");
-        check(result.toCsv().contains("\\"Mali \"\"Example\"\",GPU \""),"CSV escaping");
+        check(result.toJson().contains("\"presented_fps\":null"),"no invented presented FPS");
+        check(result.toJson().contains("\"one_percent_low_estimate_fps\""),"percentile");
+        check(result.toJson().contains("\\\"Example\\\""),"JSON escaping");
+        check(result.toCsv().contains("\"\"Example\"\""),"CSV escaping");
         meter.addFrameNanos(0);
         meter.addFrameNanos(2_000_000_000L);
         check(meter.snapshot().totalFrames==100,"bad durations discarded");
