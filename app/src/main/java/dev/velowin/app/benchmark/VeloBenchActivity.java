@@ -28,6 +28,7 @@ import javax.microedition.khronos.opengles.GL10;
 
 import dev.velowin.core.GpuBenchMetrics;
 import dev.velowin.app.graphics.VeloSpatialUpscaler;
+import dev.velowin.app.graphics.VeloTemporalFrameGen;
 import dev.velowin.core.VeloBenchReport;
 import dev.velowin.core.VeloFlowProfile;
 
@@ -113,6 +114,26 @@ public final class VeloBenchActivity extends Activity {
             });
         }
         root.addView(upscaleRow);
+        LinearLayout temporalRow=new LinearLayout(this);
+        Button off=new Button(this);
+        off.setAllCaps(false);off.setText("FG: Desativado");
+        Button experimental=new Button(this);
+        experimental.setAllCaps(false);experimental.setText("FG: Experimental");
+        temporalRow.addView(off,new LinearLayout.LayoutParams(0,-2,1));
+        temporalRow.addView(experimental,new LinearLayout.LayoutParams(0,-2,1));
+        off.setOnClickListener(v->{
+            lastResult=null;
+            renderer.setFrameGen(false);
+            surface.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+            hud.setText("VeloFlow temporal desativado • nova medição");
+        });
+        experimental.setOnClickListener(v->{
+            lastResult=null;
+            renderer.setFrameGen(true);
+            surface.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+            hud.setText("VeloFlow temporal experimental • pares de quadros reais");
+        });
+        root.addView(temporalRow);
         Button stop=new Button(this);
         stop.setAllCaps(false);
         stop.setText("Encerrar teste e salvar histórico");
@@ -157,10 +178,11 @@ public final class VeloBenchActivity extends Activity {
             if(clip!=null)clip.setPrimaryClip(ClipData.newPlainText("VeloBench 3D",report));
             GpuBenchMetrics.Snapshot sample=lastResult==null?
                 null:lastResult.metrics;
-            if(sample==null||sample.sampleSize<80||lastResult.cubes<48) {
+            if(sample==null||sample.sampleSize<80||lastResult.cubes<48
+                ||renderer.isFrameGenOn()) {
                 new AlertDialog.Builder(this).setTitle("Amostra insuficiente")
                     .setMessage("Execute o perfil Médio ou Intenso por pelo menos "
-                        +"80 quadros medidos para salvar uma sugestão. "
+                        +"80 quadros medidos com FG experimental desligado. "
                         +"O relatório disponível foi copiado.")
                     .setPositiveButton("OK",null).show();
                 return;
@@ -194,7 +216,8 @@ public final class VeloBenchActivity extends Activity {
             hud.setText("Nenhuma amostra válida. Execute novamente.");
             return;
         }
-        lastResult=new VeloBenchReport(renderer.getGpuName()+" | "+renderer.getUpscaleName(),renderer.getLoad(),
+        lastResult=new VeloBenchReport(renderer.getGpuName()+" | "+renderer.getUpscaleName()
+            +" | FG experimental="+renderer.isFrameGenOn(),renderer.getLoad(),
             System.currentTimeMillis(),renderer.elapsedMs(),reason,data);
         String previous=getSharedPreferences("velowin_gpu_lab",MODE_PRIVATE)
             .getString("bench_history","");
@@ -282,6 +305,9 @@ public final class VeloBenchActivity extends Activity {
         private volatile VeloSpatialUpscaler.Mode selectedUpscale=
             VeloSpatialUpscaler.Mode.NATIVE;
         private VeloSpatialUpscaler upscaler;
+        private VeloTemporalFrameGen temporal;
+        private volatile boolean frameGenRequested;
+        private volatile long gameRenderedFrames,intermediateFrames,glCallbacks;
         private int outputWidth=1,outputHeight=1;
         private volatile int requestedRunId=1;
         private int activeRunId=0;
@@ -293,6 +319,12 @@ public final class VeloBenchActivity extends Activity {
         private int program,uniformMvp,uniformModel;
         private int vertexBuffer,indexBuffer,vao;
         BenchRenderer(VeloBenchActivity host){this.host=host;}
+        void setFrameGen(boolean enabled){
+            frameGenRequested=enabled;
+            requestedRunId++;
+            running=true;
+        }
+        boolean isFrameGenOn(){return frameGenRequested;}
         void selectUpscale(VeloSpatialUpscaler.Mode mode){
             selectedUpscale=mode;
             requestedRunId++;
@@ -331,6 +363,7 @@ public final class VeloBenchActivity extends Activity {
             // GL names from an earlier EGL context cannot be reused.
             program=0;vao=0;vertexBuffer=0;indexBuffer=0;
             upscaler=new VeloSpatialUpscaler();
+            temporal=new VeloTemporalFrameGen();
             activeRunId=0;
             metrics.clear();
             try {
@@ -396,7 +429,13 @@ public final class VeloBenchActivity extends Activity {
                 previousFrameNs=0;
                 startedNs=nowNs;
                 metrics.clear();
+                if(temporal!=null)temporal.reset();
+                gameRenderedFrames=intermediateFrames=glCallbacks=0;
             }
+            boolean replay=frameGenRequested && temporal!=null && temporal.hasPending();
+            if(replay){
+                temporal.presentLatest();
+            }else{
             boolean scaled=upscaler!=null&&upscaler.begin(
                 outputWidth,outputHeight,selectedUpscale);
             GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT|GLES30.GL_DEPTH_BUFFER_BIT);
@@ -418,6 +457,14 @@ public final class VeloBenchActivity extends Activity {
             }
             GLES30.glBindVertexArray(0);
             if(scaled)upscaler.present(selectedUpscale);
+            gameRenderedFrames++;
+            if(frameGenRequested && temporal!=null &&
+               temporal.capture(outputWidth,outputHeight) &&
+               temporal.presentIntermediate()){
+                intermediateFrames++;
+            }
+            }
+            glCallbacks++;
             // Wait for this batch: CPU/driver/GPU completion is part of the test.
             GLES30.glFinish();
             long doneNs=System.nanoTime();
@@ -440,6 +487,12 @@ public final class VeloBenchActivity extends Activity {
             if(stats.sampleSize<20) return "Coletando quadros reais...\n"+glDriver+
                 "\nCubos: "+requestedLoad+(fault.isEmpty()?"":"\nErro: "+fault);
             return "VeloBench GLES3 • "+requestedLoad+" cubos"+
+                "\nVeloFlow temporal: "+(frameGenRequested?"experimental":"off")+
+                " | quadros 3D reais: "+gameRenderedFrames+
+                " | intermediários calculados: "+intermediateFrames+
+                " | callbacks GL: "+glCallbacks+
+                (frameGenRequested && temporal!=null && !temporal.problem().isEmpty()?
+                    "\nFG indisponível: "+temporal.problem():"")+
                 "\nVeloSpatial: "+selectedUpscale.label+
                 " | fonte: "+(upscaler==null?"nativo":upscaler.resolution())+
                 (upscaler!=null&&!upscaler.fallback().isEmpty()?
