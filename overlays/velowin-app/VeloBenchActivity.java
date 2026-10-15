@@ -81,15 +81,34 @@ public final class VeloBenchActivity extends Activity {
         root.addView(row);
         Button share=new Button(this);
         share.setAllCaps(false);
-        share.setText("Copiar resultados / recomendação VeloFlow");
+        share.setText("Salvar sugestão VeloFlow / copiar FPS");
         share.setOnClickListener(v->{
             String report=renderer.report();
             ClipboardManager clip=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
             if(clip!=null)clip.setPrimaryClip(ClipData.newPlainText("VeloBench 3D",report));
-            new AlertDialog.Builder(this).setTitle("Resultado copiado")
-                .setMessage("Relatório de desempenho e recomendações copiados. "
-                    +"O FPS medido pertence ao OpenGL ES 3 nativo e não "
-                    +"representa FPS interpolado pelo Wine/VeloFlow.")
+            GpuBenchMetrics.Snapshot sample=renderer.snapshot();
+            if(sample.sampleSize<80||renderer.getLoad()<48) {
+                new AlertDialog.Builder(this).setTitle("Amostra insuficiente")
+                    .setMessage("Execute o perfil Médio ou Intenso por pelo menos "
+                        +"80 quadros medidos para salvar uma sugestão. "
+                        +"O relatório disponível foi copiado.")
+                    .setPositiveButton("OK",null).show();
+                return;
+            }
+            VeloFlowProfile.Quality suggestion=
+                VeloFlowProfile.suggestQuality(sample.p95Ms,0);
+            getSharedPreferences("velowin_gpu_lab",MODE_PRIVATE).edit()
+                .putInt("quality_side",suggestion.minSide)
+                .putLong("measured_at",System.currentTimeMillis())
+                .putFloat("p95_frame_ms",sample.p95Ms)
+                .putInt("cubes",renderer.getLoad())
+                .putString("renderer",renderer.getGpuName()).apply();
+            new AlertDialog.Builder(this).setTitle("Sugestão salva")
+                .setMessage("VeloFlow sugerido: "+suggestion.label+
+                    " ("+suggestion.minSide+" px). O resultado do teste "
+                    +"GLES 3 foi copiado. O perfil não foi aplicado em "
+                    +"nenhum jogo; use Qualidade VeloFlow no contêiner "
+                    +"para decidir. Não mede interpolação DIS.")
                 .setPositiveButton("OK",null).show();
         });
         root.addView(share);
@@ -153,6 +172,9 @@ public final class VeloBenchActivity extends Activity {
         private int vertexBuffer,indexBuffer,vao;
         BenchRenderer(VeloBenchActivity host){this.host=host;}
         void setLoad(int count){requestedLoad=Math.max(1,Math.min(128,count));}
+        int getLoad(){return requestedLoad;}
+        String getGpuName(){return glDriver;}
+        GpuBenchMetrics.Snapshot snapshot(){return metrics.snapshot();}
         private int shader(int type,String code){
             int id=GLES30.glCreateShader(type);
             GLES30.glShaderSource(id,code);
