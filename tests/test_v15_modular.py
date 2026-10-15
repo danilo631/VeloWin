@@ -46,7 +46,7 @@ class ModularGameHubContracts(unittest.TestCase):
         self.assertIn("test_v15_modular.py",yml)
         self.assertIn("FrameGenPolicyTest",yml)
         self.assertIn("VeloWinHomeActivity",yml)
-        self.assertTrue(any(x in yml for x in ("VeloWin-Modular-GameHub-FrameGen-debug", "VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug", "VeloWin-Recovery-Settings-v18-debug", "VeloWin-VeloBench-v19-debug", "VeloWin-Hybrid-v22-debug")))
+        self.assertTrue(any(x in yml for x in ("VeloWin-Modular-GameHub-FrameGen-debug", "VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug", "VeloWin-Recovery-Settings-v18-debug", "VeloWin-VeloBench-v19-debug", "VeloWin-Hybrid-v22-debug","VeloWin-Hybrid-v23-debug")))
 
 if __name__=="__main__":
     unittest.main()

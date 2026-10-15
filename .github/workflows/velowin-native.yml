@@ -2,7 +2,7 @@ name: VeloWin Independent Core + VeloBench 3D
 
 on:
   push:
-    branches: [main, feature/v14-native-clean-main, feature/v15-modular-velowin-gamehub, feature/v16-veloflow-mali-native-modules, feature/v17-runtime-backends-framepacing, feature/v18-black-screen-recovery-settings, feature/v19-core-module-gpu-benchmark, feature/v22-hybrid-functional-wine-sgsr]
+    branches: [main, feature/v14-native-clean-main, feature/v15-modular-velowin-gamehub, feature/v16-veloflow-mali-native-modules, feature/v17-runtime-backends-framepacing, feature/v18-black-screen-recovery-settings, feature/v19-core-module-gpu-benchmark, feature/v22-hybrid-functional-wine-sgsr, feature/v23-modular-runtime-install-guard]
     paths:
       - .gitmodules
       - tools/prepare-winnative.py
@@ -17,6 +17,9 @@ on:
       - tools/patch-v17.py
       - tools/patch-v18.py
       - tools/patch-v22.py
+      - tools/patch-v23.py
+      - tests/VeloInstallModulesTest.java
+      - tests/test_v23_installer.py
       - tests/VeloUpscalePlanTest.java
       - tests/VeloDynarecPlanTest.java
       - tests/test_v22_hybrid.py
@@ -61,7 +64,7 @@ jobs:
           submodules: false
       - name: Validate complete native engine source pin
         run: |
-          python3 -m py_compile tools/prepare-winnative.py tools/strip-lsfg.py tools/patch-v17.py tools/patch-v18.py tools/patch-v22.py
+          python3 -m py_compile tools/prepare-winnative.py tools/strip-lsfg.py tools/patch-v17.py tools/patch-v18.py tools/patch-v22.py tools/patch-v23.py
           python3 -m unittest discover -s tests -p test_v14_native_mixer.py -v
           python3 -m unittest discover -s tests -p test_v15_modular.py -v
           python3 -m unittest discover -s tests -p test_v16_veloflow.py -v
@@ -70,6 +73,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_v19_modular.py -v
           python3 -m unittest discover -s tests -p test_v20_benchmark.py -v
           python3 -m unittest discover -s tests -p test_v22_hybrid.py -v
+          python3 -m unittest discover -s tests -p test_v23_installer.py -v
           mkdir -p /tmp/velowin-core-test
           javac -d /tmp/velowin-core-test \
             modules/velowin-core/src/main/java/dev/velowin/core/*.java \
@@ -79,6 +83,8 @@ jobs:
             tests/VeloUpscalePlanTest.java tests/VeloDynarecPlanTest.java
           java -ea -cp /tmp/velowin-core-test VeloUpscalePlanTest
           java -ea -cp /tmp/velowin-core-test VeloDynarecPlanTest
+          javac -cp /tmp/velowin-core-test -d /tmp/velowin-core-test tests/VeloInstallModulesTest.java
+          java -ea -cp /tmp/velowin-core-test VeloInstallModulesTest
           javac -cp /tmp/velowin-core-test -d /tmp/velowin-core-test tests/VeloSessionLifecycleTest.java
           java -ea -cp /tmp/velowin-core-test VeloSessionLifecycleTest
           mkdir -p /tmp/velowin-boot-test
@@ -162,6 +168,12 @@ jobs:
           python3 tools/patch-v17.py --source third_party/winnative --root .
           python3 tools/patch-v18.py --source third_party/winnative
           python3 tools/patch-v22.py --source third_party/winnative
+          python3 tools/patch-v23.py --source third_party/winnative
+          test -s third_party/winnative/app/src/main/app/velowin/VeloInstalledRuntimeGuard.java
+          grep -Fq "VeloImageFsMaintenance.prepare"             third_party/winnative/app/src/main/runtime/display/environment/ImageFsInstaller.java
+          ! grep -Fq "clearRootDir(rootDir)"             third_party/winnative/app/src/main/runtime/display/environment/ImageFsInstaller.java
+          grep -Fq "VeloContentTransaction.commit"             third_party/winnative/app/src/main/runtime/content/ContentsManager.java
+          grep -Fq "VeloInstalledRuntimeGuard.removalBlocker"             third_party/winnative/app/src/main/runtime/content/ContentsManager.java
           test -s third_party/winnative/app/src/main/app/velowin/VeloHybridGraphics.java
           test -s third_party/winnative/app/src/main/app/velowin/VeloBox64Bridge.java
           grep -Fq "VeloHybridGraphics.forLaunch" third_party/winnative/app/src/main/runtime/display/XServerDisplayActivity.java
@@ -198,7 +210,7 @@ jobs:
           set -euo pipefail
           chmod +x gradlew
           ./gradlew :app:assembleStandardDebug --no-daemon --stacktrace --build-cache \
-            -PVERSION_NAME=VeloWin-Hybrid-v22-dev
+            -PVERSION_NAME=VeloWin-Hybrid-v23-dev
       - name: Audit VeloWin identity, graphical components and license in APK
         run: |
           set -euo pipefail
@@ -222,7 +234,7 @@ jobs:
           cp "$APK" out/VeloWin-Native-arm64-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: VeloWin-Hybrid-v22-debug
+          name: VeloWin-Hybrid-v23-debug
           path: out/VeloWin-Native-arm64-debug.apk
           retention-days: 14
           if-no-files-found: error

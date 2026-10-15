@@ -45,5 +45,5 @@ class VeloFlowContracts(unittest.TestCase):
         self.assertIn("MaliProfileTest",flow)
         self.assertIn("test_v16_veloflow.py",flow)
         self.assertIn("veloflow_compat.cpp",flow)
-        self.assertTrue(any(x in flow for x in ("VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug", "VeloWin-Recovery-Settings-v18-debug", "VeloWin-VeloBench-v19-debug", "VeloWin-Hybrid-v22-debug")))
+        self.assertTrue(any(x in flow for x in ("VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug", "VeloWin-Recovery-Settings-v18-debug", "VeloWin-VeloBench-v19-debug", "VeloWin-Hybrid-v22-debug","VeloWin-Hybrid-v23-debug")))
 if __name__=="__main__":unittest.main()
