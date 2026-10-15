@@ -18,7 +18,7 @@ class ModularGameHubContracts(unittest.TestCase):
 
     def test_real_container_and_wine_desktop_not_fake_shell(self):
         for symbol in ("new ContainerManager(", "ContainerCreation.createContainerAsync(",
-                       "new Intent(this,XServerDisplayActivity.class)",
+                       "new VeloEngineAdapter(this,containers).launch(",
                        'desktop.putExtra("container_id",c.id)',
                        "new ContentsManager(", "contents.syncContents()",
                        "ImageFs.find(this).isUpToDate()",
@@ -46,7 +46,7 @@ class ModularGameHubContracts(unittest.TestCase):
         self.assertIn("test_v15_modular.py",yml)
         self.assertIn("FrameGenPolicyTest",yml)
         self.assertIn("VeloWinHomeActivity",yml)
-        self.assertTrue(any(x in yml for x in ("VeloWin-Modular-GameHub-FrameGen-debug", "VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug", "VeloWin-Recovery-Settings-v18-debug")))
+        self.assertTrue(any(x in yml for x in ("VeloWin-Modular-GameHub-FrameGen-debug", "VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug", "VeloWin-Recovery-Settings-v18-debug", "VeloWin-VeloBench-v19-debug")))
 
 if __name__=="__main__":
     unittest.main()
