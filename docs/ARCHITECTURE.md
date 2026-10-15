@@ -1,84 +1,78 @@
-# Arquitetura VeloWin — situação atual (v19 com incrementos v20)
+# VeloWin v21 — arquitetura executada pela branch standalone
 
-> Histórico: as versões 0.1–0.3 não executavam Wine em contêiner.
-> Este documento descreve o **APK gráfico atual**, construído pelo
-> workflow `.github/workflows/velowin-native.yml`, não aquele laboratório.
-
-## O que realmente compila
-
-O aplicativo **dev.velowin.app** ainda incorpora os serviços gráficos,
-Wine, Box64, ImageFS, JNI, áudio e controles da árvore WinNative fixada
-em `8409085f706acbc0749881d9bf1e85f2f347dfd4`.
-O checkout é referenciado por `.gitmodules` e preparado por
-`tools/prepare-winnative.py`, `tools/strip-lsfg.py`,
-`tools/patch-v17.py` e `tools/patch-v18.py`. Isto não é independência
-de runtime concluída e não deve ser apresentado como tal.
-
-O build Gradle executado pelo CI é
-`third_party/winnative/gradlew :app:assembleStandardDebug`,
-**após aplicar overlays e patches rastreados neste repositório**.
-Mudar apenas `build.gradle` na raiz não altera o APK real.
-
-## Mapa de execução
+## Fluxo real do APK
 
 ```mermaid
 flowchart TD
-  HOME["VeloWinHomeActivity (UI própria)"] --> PORT["VeloEnginePort (Java puro)"]
-  PORT --> ADAPTER["VeloEngineAdapter (ponte WinNative)"]
-  ADAPTER --> MANAGER["ContainerManager / ImageFS herdados"]
-  ADAPTER --> XSERVER["XServerDisplayActivity herdada"]
-  XSERVER --> WINE["Wine / Box64 Bionic / FEX conforme runtime"]
-  XSERVER --> GRAPHICS["X11 / Vulkan / OpenFlow-DIS / input / áudio"]
-  XSERVER --> EVENTS["VeloSessionJournal: eventos observados"]
-  EVENTS --> SESSION["VeloSessionLifecycle (Java puro)"]
-  HOME --> BENCH["VeloBenchActivity (GLES3 Android)"]
-  BENCH --> METRICS["GpuBenchMetrics + VeloBenchReport (Java puro)"]
+    Home["MainActivity VeloWin (autoral)"] --> Games["GameStore + SAF"]
+    Home --> Runtimes["BionicArchiveStore + BionicWineInstaller"]
+    Home --> Lab["ContainerLabActivity"]
+    Lab --> Session["ContainerSession / WinePrefixManager"]
+    Session --> Box["Box64 ARM64 Bionic empacotado no CI"]
+    Session --> Wine["Wine Bionic instalado como WCP verificado"]
+    Home --> Bench["VeloBenchActivity GLES3"]
+    Bench --> Spatial["VeloSpatialUpscaler: FBO + reconstrução"]
+    Bench --> Temporal["VeloTemporalFrameGen: duas texturas + correspondência local"]
+    Bench --> Metrics["GpuBenchMetrics + VeloBenchReport"]
 ```
 
-A Home não chama diretamente a Activity XServer, mas depende de
-Container e ContentsManager do upstream para criar e listar contêineres.
-Não é uma arquitetura de runtime inteiramente desacoplada.
-O VeloBench roda no Android nativo; não testa DXVK nem executa Windows.
+O caminho gráfico Windows **não está ligado** ao benchmark:
+`Wine -> XServer JNI -> Surface Android -> DXVK/Vulkan -> áudio/input`
+é um trabalho de engenharia ainda não integrado nesta branch.
+O antigo caminho WinNative que fazia isso está conservado na v18/v19,
+**não** carregado, copiado nem compilado nesta build standalone.
 
-## Limites confiáveis
+## Componentes próprios
 
-- **Abertura Wine:** o proprietário confirmou funcionamento na v18.
-  Nenhum resultado físico foi fornecido para a nova revisão.
-- **FrameGen:** OpenFlow/DIS Vulkan já foi comprovado no aparelho para
-  a v18. A pipeline operacional é preservada; não alegar novos ganhos
-  de FPS ou novo shader proprietário.
-- **Estados da sessão:** PREPARING não significa Wine pronto; RUNNING
-  depende do callback do primeiro mapeamento guest; 35s sem janela
-  ainda disparam recuperação.
-- **Mali:** wrapper Vulkan do sistema, fallback WineD3D/X11 e opção
-  reversível 1280x720. Nenhum driver Turnip é instalado em Mali.
-- **Benchmark:** usa glDrawElements GLES3 e glFinish; mede cadência
-  observada pela thread GL, não apresentação física ou FPS DIS.
-- **Binários FEX/glibc/PRoot:** rotas e perfis dependem de instalações
-  externas compatíveis. Não declarar funcionalidade universal.
+| Módulo | Contrato real | Teste |
+|---|---|---|
+| `app` | Launcher, biblioteca, runtime e testes de console Bionic | Android Gradle |
+| `modules/velowin-core` | Políticas de qualidade, estados, métricas e resultado | JVM |
+| `app/.../graphics/VeloSpatialUpscaler` | Renderizar em resolução reduzida e reconstruir a textura | Build GLES3 + teste físico pendente |
+| `app/.../graphics/VeloTemporalFrameGen` | Capturar duas imagens reais GLES3, estimar deslocamentos locais e criar uma imagem intermediária | Build GLES3 + teste físico pendente |
+| `app/.../benchmark/VeloBenchActivity` | Desenhos de cubos GLES3, encerramento de sessão, exportação | Build Android; GPU física pendente |
+| `app/.../engine/ContainerSession` | Diagnósticos reais Wine Bionic/Box64 sem servidor gráfico | Somente comandos de console, sem janela |
+| `VeloGpuPolicy` | Limite de memória RGBA8, refresh e estado térmico | JVM |
 
-## Caminho para retirar o motor monolítico
+## Fontes e licenças
 
-1. Extrair configuração, persistência e catálogo dos contêineres,
-   mantendo leituras de prefixos antigos sem conversão automática.
-2. Criar um executor de processos Wine/Box64 próprio, com supervisão
-   de PID e verificação de janela real antes de retirar classes.
-3. Portar X11 JNI, input, áudio e WSI gráfico em integrações testáveis.
-4. Vincular drivers específicos ao ABI e GPU realmente detectados.
-5. Somente remover `third_party/winnative` quando uma sessão Wine real
-   abrir em hardware sem regressão, com atribuições e fonte correspondente.
+- O app VeloWin é recuperado da árvore original da branch `main`
+  (anterior à v14) e extendido por código próprio.
+- Box64: `ptitSeb/box64`, commit
+  `c6a8c4472f74f9ad204d35195f084b5f996b12e3`,
+  licença MIT; código compilado separadamente pelo CI e licença
+  empacotada em `assets/BOX64_LICENSE.txt`.
+- AMD GPUOpen FidelityFX FSR 1 (MIT): **referência técnica**,
+  nenhum shader AMD copiado nem nomes comerciais atribuídos ao efeito.
+- glmark2 (GPLv3): referência metodológica para geometria; código
+  original da Activity VeloBench, não port do glmark2.
+- Wine/Proton WCP, quando instalados: devem preservar suas licenças
+  originais. Instalar Wine não confere suporte a janelas/DXVK.
+- WinNative/Winlator: fontes da versão anterior estão no histórico e
+  nas branches legadas; sem imports, checkout e execução no APK v21.
 
-Consulte `docs/DEPENDENCY_INVENTORY_V20.md`,
-`docs/BLACK_SCREEN_RECOVERY_V18.md`,
-`docs/SESSION_OBSERVABILITY_V20.md` e
-`docs/BENCHMARK_LIFECYCLE_V20.md`.
+## Métricas e proteções
 
-## Preservação e distribuição
+- `glFinish` mede cadência da thread GL + GPU; não lê
+  timestamps reais de apresentação do SurfaceFlinger.
+- Quadros intermediários são **imagens distintas calculadas**, não
+  imagens repetidas; output pode ter artefatos de motion matching.
+- Interpolação usa dois RGBA8 e restrição a 4 MP por superfície;
+  térmico severo Android (status >= 4) desativa a etapa experimental.
+- Alterações de resolução, modo ou carga descartam amostras anteriores.
+- Fallback para resolução nativa caso a criação do FBO falhe.
+- Nenhuma pontuação fabricada, desempenho Mali presumido ou
+  instalação de Turnip para Mali.
 
-Não apague ImageFS, contêineres ou prefixos para migrar. Um APK de CI
-assinado com chave **debug** pode ter assinatura diferente de outro APK;
-uma atualização in-place não deve ser prometida sem comparar assinaturas.
-Não desinstale a versão funcional sem fazer backup verificável dos dados.
-Faça rollback pelo código da v18, commit
-`e8483a7c9d62ce96627901559aaffc8d7d51e263`, preservando os dados.
-Mergir na main requer testes de compatibilidade e execução no aparelho.
+## Gates para restabelecer execução gráfica Windows
+
+1. Portar X11/JNI e compositor Android com atribuição de fontes, CI e
+   teste de primeira janela real sem regressão da tela preta.
+2. Integrar Wine Bionic e Box64 ao processo com supervisão de PIDs,
+   prefixos duráveis e encerramento seguro.
+3. Integrar áudio, teclado, mouse, touchscreen e controladores.
+4. Separar instalação de drivers e compatibilidade Vulkan Mali,
+   DXVK, VKD3D e WineD3D conforme capacidades medidas.
+5. Conectar FrameGen a um compositor de quadros autorizado e medir
+   latência e apresentação real em hardware. Sem estes passos, v21
+   permanece experimental e não deve substituir a v18/v19.
