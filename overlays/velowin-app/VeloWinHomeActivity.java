@@ -104,6 +104,8 @@ public final class VeloWinHomeActivity extends Activity {
         button(screen,"+ Criar contêiner Windows",this::createContainer);
         button(screen,"Configurações • VeloWin",
             ()->startActivity(new Intent(this,VeloSettingsActivity.class)));
+        button(screen,"Instalar/Reparar runtime • VeloWin",
+            ()->startActivity(new Intent(this,VeloRuntimeInstallActivity.class)));
         button(screen,"Teste 3D GPU • VeloBench",()->startActivity(new Intent(this,VeloBenchActivity.class)));
         button(screen,"Atualizar lista",this::reload);
         ScrollView scroll=new ScrollView(this);
