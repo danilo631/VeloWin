@@ -10,6 +10,8 @@ import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.os.Bundle;
+import android.os.Build;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.net.Uri;
 import java.io.OutputStream;
@@ -31,6 +33,7 @@ import dev.velowin.app.graphics.VeloSpatialUpscaler;
 import dev.velowin.app.graphics.VeloTemporalFrameGen;
 import dev.velowin.core.VeloBenchReport;
 import dev.velowin.core.VeloFlowProfile;
+import dev.velowin.core.VeloGpuPolicy;
 
 /**
  * VeloBench 3D: VeloWin original OpenGL ES 3 benchmark.
@@ -47,10 +50,25 @@ public final class VeloBenchActivity extends Activity {
     private static final int MAX_HISTORY = 12;
     private volatile VeloBenchReport lastResult;
     private boolean exportCsv;
+    private volatile float displayHz=60f;
+    private volatile int thermalStatus=0;
+    private PowerManager powerManager;
+    private PowerManager.OnThermalStatusChangedListener thermalListener;
 
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
         getWindow().setStatusBarColor(BG);
+        displayHz=getWindowManager().getDefaultDisplay().getRefreshRate();
+        powerManager=(PowerManager)getSystemService(POWER_SERVICE);
+        if(Build.VERSION.SDK_INT>=29 && powerManager!=null){
+            try {
+                thermalStatus=powerManager.getCurrentThermalStatus();
+                thermalListener=status->thermalStatus=status;
+                powerManager.addThermalStatusListener(thermalListener);
+            }catch(RuntimeException error){
+                thermalStatus=4; // Unknown thermal state: fail closed for FG.
+            }
+        }
         LinearLayout root=new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
@@ -259,7 +277,11 @@ public final class VeloBenchActivity extends Activity {
         super.onPause();
     }
     @Override public void onResume(){super.onResume();if(surface!=null)surface.onResume();}
-    @Override protected void onDestroy(){surface=null;hud=null;super.onDestroy();}
+    @Override protected void onDestroy(){
+        if(Build.VERSION.SDK_INT>=29 && powerManager!=null && thermalListener!=null)
+            powerManager.removeThermalStatusListener(thermalListener);
+        surface=null;hud=null;super.onDestroy();
+    }
 
     private static final class BenchRenderer implements GLSurfaceView.Renderer {
         private static final String VS=
@@ -432,7 +454,11 @@ public final class VeloBenchActivity extends Activity {
                 if(temporal!=null)temporal.reset();
                 gameRenderedFrames=intermediateFrames=glCallbacks=0;
             }
-            boolean replay=frameGenRequested && temporal!=null && temporal.hasPending();
+            boolean permitted=frameGenRequested &&
+                VeloGpuPolicy.permitTemporal(outputWidth,outputHeight,
+                    host.displayHz,host.thermalStatus);
+            if(!permitted && temporal!=null && temporal.hasPending())temporal.reset();
+            boolean replay=permitted && temporal!=null && temporal.hasPending();
             if(replay){
                 temporal.presentLatest();
             }else{
@@ -458,7 +484,7 @@ public final class VeloBenchActivity extends Activity {
             GLES30.glBindVertexArray(0);
             if(scaled)upscaler.present(selectedUpscale);
             gameRenderedFrames++;
-            if(frameGenRequested && temporal!=null &&
+            if(permitted && temporal!=null &&
                temporal.capture(outputWidth,outputHeight) &&
                temporal.presentIntermediate()){
                 intermediateFrames++;
@@ -491,6 +517,10 @@ public final class VeloBenchActivity extends Activity {
                 " | quadros 3D reais: "+gameRenderedFrames+
                 " | intermediários calculados: "+intermediateFrames+
                 " | callbacks GL: "+glCallbacks+
+                "\nTela: "+host.displayHz+" Hz | térmico: "+host.thermalStatus+
+                (frameGenRequested && !VeloGpuPolicy.permitTemporal(
+                    outputWidth,outputHeight,host.displayHz,host.thermalStatus)?
+                    " | FG bloqueado por limite térmico/memória/refresh":"")+
                 (frameGenRequested && temporal!=null && !temporal.problem().isEmpty()?
                     "\nFG indisponível: "+temporal.problem():"")+
                 "\nVeloSpatial: "+selectedUpscale.label+
