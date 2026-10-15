@@ -31,7 +31,7 @@ class VeloFlowContracts(unittest.TestCase):
         self.assertNotIn("shader",C.lower().split("copyright")[-1] if False else "")
     def test_mali_policy_is_reversible_not_turnip_tuned(self):
         for symbol in ("MaliProfile.restore(", "MaliProfile.apply(",
-                       "Entrar no contêiner", "XServerDisplayActivity.class"):
+                       "Entrar no contêiner", "VeloEngineAdapter"):
             self.assertIn(symbol,UI)
         for symbol in ('c.setDXWrapper("wined3d")','c.setGraphicsDriver("wrapper")',
                        'c.setDisplayBackend(Container.DISPLAY_BACKEND_X11)',
@@ -45,5 +45,5 @@ class VeloFlowContracts(unittest.TestCase):
         self.assertIn("MaliProfileTest",flow)
         self.assertIn("test_v16_veloflow.py",flow)
         self.assertIn("veloflow_compat.cpp",flow)
-        self.assertTrue(any(x in flow for x in ("VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug", "VeloWin-Recovery-Settings-v18-debug")))
+        self.assertTrue(any(x in flow for x in ("VeloWin-VeloFlow-Mali-debug", "VeloWin-Runtime-VeloFlow-v17-debug", "VeloWin-Recovery-Settings-v18-debug", "VeloWin-VeloBench-v19-debug")))
 if __name__=="__main__":unittest.main()
