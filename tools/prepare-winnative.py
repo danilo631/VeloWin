@@ -106,7 +106,7 @@ def prepare(source: Path, overlay: Path):
                      "VeloSettingsActivity.java", "VeloSessionDiagnostics.java",
                      "VeloBenchActivity.java", "VeloEngineAdapter.java",
                      "VeloSessionJournal.java", "VeloHybridGraphics.java", "VeloBox64Bridge.java",
-                     "VeloInstalledRuntimeGuard.java"):
+                     "VeloInstalledRuntimeGuard.java", "VeloRuntimeInstallActivity.java"):
         src = overlay_sources / filename
         if not src.is_file():
             fail("Missing original VeloWin UI module: " + filename)
@@ -158,6 +158,13 @@ def prepare(source: Path, overlay: Path):
             android:exported="false"
             android:theme="@style/AppTheme"
             android:screenOrientation="sensorLandscape"/>
+"""
+    new_launcher += """
+        <activity
+            android:name="com.winlator.cmod.velowin.VeloRuntimeInstallActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="fullUser"/>
 """
     if manifest.count("</application>") != 1:
         fail("Android manifest application node changed.")

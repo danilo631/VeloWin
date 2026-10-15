@@ -20,6 +20,7 @@ on:
       - tools/patch-v23.py
       - tests/VeloInstallModulesTest.java
       - tests/VeloFlowCapacityTest.c
+      - overlays/velowin-app/VeloRuntimeInstallActivity.java
       - tests/test_v23_installer.py
       - tests/VeloUpscalePlanTest.java
       - tests/VeloDynarecPlanTest.java
@@ -174,6 +175,7 @@ jobs:
           python3 tools/patch-v22.py --source third_party/winnative
           python3 tools/patch-v23.py --source third_party/winnative
           test -s third_party/winnative/app/src/main/app/velowin/VeloInstalledRuntimeGuard.java
+          test -s third_party/winnative/app/src/main/app/velowin/VeloRuntimeInstallActivity.java
           grep -Fq "VeloImageFsMaintenance.prepare"             third_party/winnative/app/src/main/runtime/display/environment/ImageFsInstaller.java
           ! grep -Fq "clearRootDir(rootDir)"             third_party/winnative/app/src/main/runtime/display/environment/ImageFsInstaller.java
           grep -Fq "veloflow_capacity_guard" \

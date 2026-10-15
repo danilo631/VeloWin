@@ -17,6 +17,8 @@ class InstallIntegration(unittest.TestCase):
         p=read("tools/prepare-winnative.py")
         self.assertIn("VeloInstalledRuntimeGuard.java",p)
         self.assertIn("VeloBox64Bridge.java",p)
+        self.assertIn("VeloRuntimeInstallActivity.java",p)
+        self.assertIn("VeloRuntimeInstallActivity.class",read("overlays/velowin-app/VeloWinHomeActivity.java"))
         v=read("overlays/velowin-app/VeloWinHomeActivity.java")
         self.assertIn("VeloEngineAdapter",v)
         self.assertIn("FrameGenPolicy",v)
