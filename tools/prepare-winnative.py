@@ -104,7 +104,8 @@ def prepare(source: Path, overlay: Path):
     for filename in ("VeloWinHomeActivity.java", "FrameGenPolicy.java", "MaliProfile.java",
                      "VeloRuntimePlan.java", "VeloRuntimeBridge.java", "VeloBootTarget.java",
                      "VeloSettingsActivity.java", "VeloSessionDiagnostics.java",
-                     "VeloBenchActivity.java", "VeloEngineAdapter.java"):
+                     "VeloBenchActivity.java", "VeloEngineAdapter.java",
+                     "VeloSessionJournal.java"):
         src = overlay_sources / filename
         if not src.is_file():
             fail("Missing original VeloWin UI module: " + filename)

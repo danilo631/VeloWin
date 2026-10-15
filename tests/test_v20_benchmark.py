@@ -17,6 +17,14 @@ class BenchmarkLifecycleTests(unittest.TestCase):
         self.assertIn("toCsv()",report)
         self.assertIn("toJson()",report)
         self.assertNotIn("Math.random()",report)
+    def test_observed_windows_and_process_local_status(self):
+        patch=(ROOT/"tools/patch-v18.py").read_text()
+        for name in ("markXServer", "markWine", "markWaiting", "markWindow",
+                     "warnNoWindow", "markStopped"):
+            self.assertIn("VeloSessionJournal."+name,patch)
+        self.assertIn("VeloSessionJournal.java",(ROOT/"tools/prepare-winnative.py").read_text())
+        self.assertIn("VeloSessionJournal.describe",(ROOT/"overlays/velowin-app/VeloWinHomeActivity.java").read_text())
+        self.assertIn("VeloSessionJournal.begin",(ROOT/"overlays/velowin-app/VeloEngineAdapter.java").read_text())
     def test_old_wine_and_framegen_launch_untouched(self):
         patch=(ROOT/"tools/patch-v18.py").read_text()
         self.assertIn("checkVeloWinFirstWindow",patch)

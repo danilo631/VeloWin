@@ -36,6 +36,13 @@ public final class VeloEngineAdapter implements VeloEnginePort {
                 throw new IllegalArgumentException("Comando Windows inválido");
             intent.putExtra("boot_exe",request.executable);
         }
-        host.startActivity(intent);
+        VeloSessionJournal.begin(request.containerId);
+        try {
+            host.startActivity(intent);
+        } catch (RuntimeException error) {
+            VeloSessionJournal.markFailed(request.containerId,
+                "Falha Activity: "+error.getClass().getSimpleName());
+            throw error;
+        }
     }
 }

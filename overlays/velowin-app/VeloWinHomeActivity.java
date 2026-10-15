@@ -157,6 +157,8 @@ public final class VeloWinHomeActivity extends Activity {
             ?"OpenFlow/DIS "+c.getExtra("disFrameGenTargetFps","0")+" FPS alvo"
             :"FrameGen desativado";
         card.addView(text(status,12,ACCENT,false));
+        card.addView(text("Sessão observada: "+VeloSessionJournal.describe(c.id),
+            11,MUTED,false));
         button(card,"Entrar no contêiner / Desktop Wine",()->launch(c));
         button(card,"Método: Bionic / FEX / Linux PRoot",()->runtimeOptions(c));
         button(card,"VeloWin Mali · otimização reversível",()->maliOptions(c));

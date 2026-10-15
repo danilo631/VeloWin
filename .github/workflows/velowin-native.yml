@@ -9,6 +9,7 @@ on:
       - 'overlays/velowin-app/**'
       - 'modules/velowin-core/**'
       - tests/VeloCoreTest.java
+      - tests/VeloSessionLifecycleTest.java
       - tests/test_v19_modular.py
       - tests/test_v20_benchmark.py
       - 'overlays/velowin-native/**'
@@ -35,6 +36,7 @@ on:
       - LICENSE
       - docs/NATIVE_ENGINE_V14.md
       - docs/BENCHMARK_LIFECYCLE_V20.md
+      - docs/SESSION_OBSERVABILITY_V20.md
   workflow_dispatch:
 
 permissions:
@@ -67,6 +69,8 @@ jobs:
             modules/velowin-core/src/main/java/dev/velowin/core/*.java \
             tests/VeloCoreTest.java
           java -ea -cp /tmp/velowin-core-test VeloCoreTest
+          javac -cp /tmp/velowin-core-test -d /tmp/velowin-core-test tests/VeloSessionLifecycleTest.java
+          java -ea -cp /tmp/velowin-core-test VeloSessionLifecycleTest
           mkdir -p /tmp/velowin-boot-test
           javac -d /tmp/velowin-boot-test \
             overlays/velowin-app/VeloBootTarget.java tests/VeloBootTargetTest.java
@@ -150,6 +154,8 @@ jobs:
           test -s third_party/winnative/app/src/main/app/velowin/VeloSettingsActivity.java
           test -s third_party/winnative/app/src/main/app/velowin/VeloBootTarget.java
           test -s third_party/winnative/app/src/main/app/velowin/VeloBenchActivity.java
+          test -s third_party/winnative/app/src/main/app/velowin/VeloSessionJournal.java
+          grep -Fq "VeloSessionJournal.markWindow" third_party/winnative/app/src/main/runtime/display/XServerDisplayActivity.java
           test -s third_party/winnative/velowin-core/build.gradle
           grep -Fq "implementation project(':velowin-core')" \
             third_party/winnative/app/build.gradle
