@@ -101,6 +101,35 @@ def patch(source):
     }
     FileUtils.delete(getInstallDir(context, profile));''',"guard in-use runtime removal")
     content.write_text(code,encoding="utf-8")
+
+    # Native DIS synthesis scheduling: preserve actual game frame, throttle
+    # optional intermediate GPU images after real acquire failures, recover
+    # capacity gradually after 120 real frames with no new misses.
+    presenter=source/"app/src/main/cpp/winlator/vk/framegen/fg_present.c"
+    native=presenter.read_text(encoding="utf-8")
+    native=one(native,
+        """    uint64_t acquire_misses;
+};""",
+        """    uint64_t acquire_misses;
+    VeloFlowCapacityGuard velo_capacity_guard;
+};""",
+        "DIS presenter CPU state")
+    native=one(native,
+        """    if (fg->active_engine == FG_ENGINE_DIS) {
+        planned = vkr_dis_plan(fg->dis, capacity, fg->source_frames);
+    } else if (fg->lsfg) {""",
+        """    if (fg->active_engine == FG_ENGINE_DIS) {
+        uint32_t guarded_capacity = veloflow_capacity_guard(
+            &fg->velo_capacity_guard, capacity,
+            fg->acquire_misses, fg->source_frames);
+        planned = vkr_dis_plan(fg->dis, guarded_capacity, fg->source_frames);
+    } else if (fg->lsfg) {""",
+        "real Vulkan DIS adaptive capacity")
+    if '#include "../veloflow_pacing.h"' not in native:
+        raise RuntimeError("VeloFlow native pacing header must be linked by v17")
+    presenter.write_text(native,encoding="utf-8")
+    print("VeloFlow: real Vulkan DIS generation pressure guard wired")
+
     print("VeloWin installer: old ImageFS clearRootDir and unsafe ContentsManager commit removed")
     print("VeloWin installer: own no-follow cleanup, atomic publish and runtime removal guard wired")
 

@@ -19,6 +19,7 @@ on:
       - tools/patch-v22.py
       - tools/patch-v23.py
       - tests/VeloInstallModulesTest.java
+      - tests/VeloFlowCapacityTest.c
       - tests/test_v23_installer.py
       - tests/VeloUpscalePlanTest.java
       - tests/VeloDynarecPlanTest.java
@@ -98,6 +99,9 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -O2 tests/VeloFlowPacingTest.c \
             -lm -o /tmp/velowin-velo-pacing
           /tmp/velowin-velo-pacing
+          cc -std=c11 -Wall -Wextra -Werror -O2 tests/VeloFlowCapacityTest.c \
+            -lm -o /tmp/velowin-flow-capacity
+          /tmp/velowin-flow-capacity
           mkdir -p /tmp/velowin-mali-test
           javac -d /tmp/velowin-mali-test \
             tests/stubs/com/winlator/cmod/runtime/container/Container.java \
@@ -172,6 +176,8 @@ jobs:
           test -s third_party/winnative/app/src/main/app/velowin/VeloInstalledRuntimeGuard.java
           grep -Fq "VeloImageFsMaintenance.prepare"             third_party/winnative/app/src/main/runtime/display/environment/ImageFsInstaller.java
           ! grep -Fq "clearRootDir(rootDir)"             third_party/winnative/app/src/main/runtime/display/environment/ImageFsInstaller.java
+          grep -Fq "veloflow_capacity_guard" \
+            third_party/winnative/app/src/main/cpp/winlator/vk/framegen/fg_present.c
           grep -Fq "VeloContentTransaction.commit"             third_party/winnative/app/src/main/runtime/content/ContentsManager.java
           grep -Fq "VeloInstalledRuntimeGuard.removalBlocker"             third_party/winnative/app/src/main/runtime/content/ContentsManager.java
           test -s third_party/winnative/app/src/main/app/velowin/VeloHybridGraphics.java
