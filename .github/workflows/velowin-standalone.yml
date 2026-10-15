@@ -1,0 +1,70 @@
+name: VeloWin Standalone Android (no WinNative)
+on:
+  push:
+    branches: [feature/v21-standalone-veloflow-upscaling]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: velowin-v21-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Check independent source and JVM
+        run: |
+          set -euo pipefail
+          test ! -e third_party/winnative
+          test ! -e .gitmodules
+          ! grep -R -n 'third_party/winnative' build.gradle settings.gradle app/build.gradle
+          mkdir -p /tmp/velowin-jvm
+          javac -d /tmp/velowin-jvm modules/velowin-core/src/main/java/dev/velowin/core/*.java tests/VeloCoreTest.java tests/VeloSessionLifecycleTest.java
+          java -ea -cp /tmp/velowin-jvm VeloCoreTest
+          java -ea -cp /tmp/velowin-jvm VeloSessionLifecycleTest
+          python3 -m unittest discover -s tests -p test_v21_standalone.py -v
+  android:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Install Android SDK NDK and CMake
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018"
+      - name: Build independent app
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Audit generated APK
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee apk-audit.txt
+          grep -Fq "package: name='dev.velowin.app'" apk-audit.txt
+          sha256sum "$APK" | tee apk-sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VeloWin-Standalone-v21-debug
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            apk-audit.txt
+            apk-sha256.txt
+          if-no-files-found: error
+          retention-days: 14
