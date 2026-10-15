@@ -26,14 +26,15 @@ jobs:
           test ! -e .gitmodules
           ! grep -R -n 'third_party/winnative' build.gradle settings.gradle app/build.gradle
           mkdir -p /tmp/velowin-jvm
-          javac -d /tmp/velowin-jvm modules/velowin-core/src/main/java/dev/velowin/core/*.java tests/VeloCoreTest.java tests/VeloSessionLifecycleTest.java
+          javac -d /tmp/velowin-jvm modules/velowin-core/src/main/java/dev/velowin/core/*.java tests/VeloCoreTest.java tests/VeloSessionLifecycleTest.java tests/VeloGpuPolicyTest.java
           java -ea -cp /tmp/velowin-jvm VeloCoreTest
           java -ea -cp /tmp/velowin-jvm VeloSessionLifecycleTest
+          java -ea -cp /tmp/velowin-jvm VeloGpuPolicyTest
           python3 -m unittest discover -s tests -p test_v21_standalone.py -v
   android:
     needs: contract
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,7 +50,30 @@ jobs:
         run: |
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018"
-      - name: Build independent app
+      - name: Build pinned Box64 ARM64 Bionic independently
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/ptitSeb/box64.git /tmp/box64-src
+          git -C /tmp/box64-src checkout -q c6a8c4472f74f9ad204d35195f084b5f996b12e3
+          test "$(git -C /tmp/box64-src rev-parse HEAD)" = "c6a8c4472f74f9ad204d35195f084b5f996b12e3"
+          NDK="$ANDROID_HOME/ndk/27.2.12479018"
+          TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          cmake -S /tmp/box64-src -B /tmp/box64-build -G Ninja \
+            -DCMAKE_C_COMPILER="$TOOLCHAIN/aarch64-linux-android28-clang" \
+            -DANDROID=ON -DARM64=ON -DTERMUX=OFF -DARM_DYNAREC=ON \
+            -DBAD_SIGNAL=ON -DHAVE_TRACE=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/box64-build --parallel 4
+          test -s /tmp/box64-build/box64
+          "$TOOLCHAIN/llvm-readelf" -h /tmp/box64-build/box64 | tee /tmp/box64-header.txt
+          "$TOOLCHAIN/llvm-readelf" -l /tmp/box64-build/box64 | tee /tmp/box64-loader.txt
+          grep -Eq 'Machine:.*AArch64' /tmp/box64-header.txt
+          grep -Fq '/system/bin/linker64' /tmp/box64-loader.txt
+          ! grep -Fq 'ld-linux-aarch64.so.1' /tmp/box64-loader.txt
+          "$TOOLCHAIN/llvm-strip" /tmp/box64-build/box64
+          mkdir -p app/src/main/jniLibs/arm64-v8a
+          cp /tmp/box64-build/box64 app/src/main/jniLibs/arm64-v8a/libvelobox64.so
+          cp /tmp/box64-src/LICENSE app/src/main/assets/BOX64_LICENSE.txt
+      - name: Build independent app with Bionic Box64
         run: gradle :app:assembleDebug --no-daemon --stacktrace
       - name: Audit generated APK
         run: |
@@ -58,6 +82,8 @@ jobs:
           test -n "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee apk-audit.txt
           grep -Fq "package: name='dev.velowin.app'" apk-audit.txt
+          unzip -l "$APK" | grep -Fq "lib/arm64-v8a/libvelobox64.so"
+          unzip -l "$APK" | grep -Fq "assets/BOX64_LICENSE.txt"
           sha256sum "$APK" | tee apk-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -66,5 +92,7 @@ jobs:
             app/build/outputs/apk/debug/*.apk
             apk-audit.txt
             apk-sha256.txt
+            /tmp/box64-header.txt
+            /tmp/box64-loader.txt
           if-no-files-found: error
           retention-days: 14
