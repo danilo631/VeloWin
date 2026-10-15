@@ -27,6 +27,7 @@ import dev.velowin.app.runtime.BionicCatalog;
 import dev.velowin.app.runtime.BionicArchiveStore;
 import dev.velowin.app.runtime.BionicWineInstaller;
 import dev.velowin.app.hardware.NativeCapabilities;
+import dev.velowin.app.benchmark.VeloBenchActivity;
 import dev.velowin.app.hardware.GpuDriverPolicy;
 import dev.velowin.app.hardware.InputAudioLabActivity;
 import dev.velowin.app.hardware.GpuSurfaceLabActivity;
@@ -1396,6 +1397,8 @@ public final class MainActivity extends Activity {
             + "bibliotecas do sistema. A disponibilidade real de Vulkan precisa "
             + "ser testada com um motor carregado.", 13, MUTED, false, 0);
         action(note, "Testar áudio, toque e controle", () -> startActivity(new Intent(this, InputAudioLabActivity.class)), true);
+        action(note, "VeloBench 3D • reconstrução espacial",
+            () -> startActivity(new Intent(this,VeloBenchActivity.class)),true);
         action(note, "Testar Surface OpenGL e FPS", () -> startActivity(new Intent(this, GpuSurfaceLabActivity.class)), false);
         action(note, "Testar apresentação Vulkan nativa (WSI)",
             () -> startActivity(new Intent(this, VulkanWsiLabActivity.class)), false);
@@ -1467,7 +1470,7 @@ public final class MainActivity extends Activity {
     private void renderAbout() {
         section("Sobre o VeloWin", "Uma plataforma Android original, aberta e modular.");
         LinearLayout card = card();
-        add(card, "VeloWin 0.8.0-dev", 18, WHITE, true, 7);
+        add(card, "VeloWin 0.21.0-standalone-dev", 18, WHITE, true, 7);
         add(card, "Interface própria, biblioteca com favoritos e inspeção PE, "
             + "diagnóstico gráfico/térmico, downloads SHA-256 e extração segura "
             + "de arquivos Wine. O motor de execução continua em desenvolvimento.", 13, MUTED, false, 10);

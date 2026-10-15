@@ -93,6 +93,26 @@ public final class VeloBenchActivity extends Activity {
             });
         }
         root.addView(row);
+        LinearLayout upscaleRow=new LinearLayout(this);
+        VeloSpatialUpscaler.Mode[] choices={
+            VeloSpatialUpscaler.Mode.NATIVE,VeloSpatialUpscaler.Mode.QUALITY,
+            VeloSpatialUpscaler.Mode.BALANCED,VeloSpatialUpscaler.Mode.PERFORMANCE
+        };
+        for(VeloSpatialUpscaler.Mode choice:choices){
+            Button toggle=new Button(this);
+            toggle.setText(choice==VeloSpatialUpscaler.Mode.NATIVE?"Nativo":
+                (int)(choice.scale*100)+"%");
+            toggle.setTextSize(11);
+            toggle.setAllCaps(false);
+            upscaleRow.addView(toggle,new LinearLayout.LayoutParams(0,-2,1));
+            toggle.setOnClickListener(v->{
+                lastResult=null;
+                renderer.selectUpscale(choice);
+                surface.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+                hud.setText("VeloSpatial: "+choice.label+" · nova medição");
+            });
+        }
+        root.addView(upscaleRow);
         Button stop=new Button(this);
         stop.setAllCaps(false);
         stop.setText("Encerrar teste e salvar histórico");
@@ -174,7 +194,7 @@ public final class VeloBenchActivity extends Activity {
             hud.setText("Nenhuma amostra válida. Execute novamente.");
             return;
         }
-        lastResult=new VeloBenchReport(renderer.getGpuName(),renderer.getLoad(),
+        lastResult=new VeloBenchReport(renderer.getGpuName()+" | "+renderer.getUpscaleName(),renderer.getLoad(),
             System.currentTimeMillis(),renderer.elapsedMs(),reason,data);
         String previous=getSharedPreferences("velowin_gpu_lab",MODE_PRIVATE)
             .getString("bench_history","");
@@ -259,6 +279,10 @@ public final class VeloBenchActivity extends Activity {
         private final float[] projection=new float[16],view=new float[16];
         private final float[] model=new float[16],mv=new float[16],mvp=new float[16];
         private volatile int requestedLoad=48;
+        private volatile VeloSpatialUpscaler.Mode selectedUpscale=
+            VeloSpatialUpscaler.Mode.NATIVE;
+        private VeloSpatialUpscaler upscaler;
+        private int outputWidth=1,outputHeight=1;
         private volatile int requestedRunId=1;
         private int activeRunId=0;
         private volatile boolean running=true;
@@ -269,6 +293,11 @@ public final class VeloBenchActivity extends Activity {
         private int program,uniformMvp,uniformModel;
         private int vertexBuffer,indexBuffer,vao;
         BenchRenderer(VeloBenchActivity host){this.host=host;}
+        void selectUpscale(VeloSpatialUpscaler.Mode mode){
+            selectedUpscale=mode;
+            requestedRunId++;
+            running=true;
+        }
         void startRun(int count){
             requestedLoad=Math.max(1,Math.min(128,count));
             requestedRunId++;
@@ -283,6 +312,7 @@ public final class VeloBenchActivity extends Activity {
         }
         int getLoad(){return requestedLoad;}
         String getGpuName(){return glDriver;}
+        String getUpscaleName(){return selectedUpscale.label;}
         GpuBenchMetrics.Snapshot snapshot(){return metrics.snapshot();}
         private int shader(int type,String code){
             int id=GLES30.glCreateShader(type);
@@ -300,6 +330,7 @@ public final class VeloBenchActivity extends Activity {
         @Override public void onSurfaceCreated(GL10 gl,EGLConfig config){
             // GL names from an earlier EGL context cannot be reused.
             program=0;vao=0;vertexBuffer=0;indexBuffer=0;
+            upscaler=new VeloSpatialUpscaler();
             activeRunId=0;
             metrics.clear();
             try {
@@ -350,6 +381,7 @@ public final class VeloBenchActivity extends Activity {
             }
         }
         @Override public void onSurfaceChanged(GL10 gl,int w,int h){
+            outputWidth=Math.max(1,w);outputHeight=Math.max(1,h);
             GLES30.glViewport(0,0,w,h);
             float aspect=Math.max(1,w)/(float)Math.max(1,h);
             Matrix.perspectiveM(projection,0,55f,aspect,0.1f,80f);
@@ -365,6 +397,8 @@ public final class VeloBenchActivity extends Activity {
                 startedNs=nowNs;
                 metrics.clear();
             }
+            boolean scaled=upscaler!=null&&upscaler.begin(
+                outputWidth,outputHeight,selectedUpscale);
             GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT|GLES30.GL_DEPTH_BUFFER_BIT);
             GLES30.glUseProgram(program);
             GLES30.glBindVertexArray(vao);
@@ -383,6 +417,7 @@ public final class VeloBenchActivity extends Activity {
                     GLES30.GL_UNSIGNED_BYTE,0);
             }
             GLES30.glBindVertexArray(0);
+            if(scaled)upscaler.present(selectedUpscale);
             // Wait for this batch: CPU/driver/GPU completion is part of the test.
             GLES30.glFinish();
             long doneNs=System.nanoTime();
@@ -405,6 +440,10 @@ public final class VeloBenchActivity extends Activity {
             if(stats.sampleSize<20) return "Coletando quadros reais...\n"+glDriver+
                 "\nCubos: "+requestedLoad+(fault.isEmpty()?"":"\nErro: "+fault);
             return "VeloBench GLES3 • "+requestedLoad+" cubos"+
+                "\nVeloSpatial: "+selectedUpscale.label+
+                " | fonte: "+(upscaler==null?"nativo":upscaler.resolution())+
+                (upscaler!=null&&!upscaler.fallback().isEmpty()?
+                    "\nFallback GLES: "+upscaler.fallback():"")+
                 "\n"+glDriver+
                 "\nFPS médio: "+String.format(java.util.Locale.US,"%.1f",stats.averageFps)+
                 " | 1% low: "+String.format(java.util.Locale.US,"%.1f",stats.lowOnePercentFps())+
