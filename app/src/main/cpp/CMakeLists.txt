@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(velowin_native C)
+add_library(velowin_probe SHARED native_probe.c vulkan_wsi.c)
+find_library(VK vulkan)
+find_library(LOG log)
+find_library(ANDROID_LIB android)
+target_link_libraries(velowin_probe PRIVATE ${VK} ${LOG} ${ANDROID_LIB})
+target_compile_options(velowin_probe PRIVATE -Wall -Wextra -Werror -fvisibility=hidden)

@@ -1,13 +1,3 @@
-// Native build entry point. Do not accidentally compile the deprecated
-// VeloWin 0.8.0 ContainerLabActivity prototype from app/.
-tasks.register('assembleDebug', Exec) {
-    group = 'build'
-    description = 'Build fully integrated VeloWin graphical container APK'
-    workingDir rootDir
-    commandLine 'bash', 'tools/build-native.sh'
-}
-tasks.register('buildNative') {
-    group = 'build'
-    description = 'Alias for the complete native VeloWin Android build'
-    dependsOn tasks.named('assembleDebug')
+plugins {
+    id 'com.android.application' version '8.9.2' apply false
 }

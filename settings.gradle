@@ -1,4 +1,12 @@
-// VeloWin Native v14 entry point. The old Android console app is retired.
-// The complete graphical engine has its own source-pinned Gradle project at
-// third_party/winnative; run 'gradle assembleDebug' or tools/build-native.sh.
-rootProject.name = 'VeloWinNative'
+pluginManagement {
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); mavenCentral() }
+}
+rootProject.name = 'VeloWin'
+include ':app'
+
+include ':velowin-core'
+project(':velowin-core').projectDir = file('modules/velowin-core')
