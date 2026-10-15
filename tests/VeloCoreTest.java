@@ -1,6 +1,7 @@
 import dev.velowin.core.GpuBenchMetrics;
 import dev.velowin.core.VeloFlowProfile;
 import dev.velowin.core.VeloEnginePort;
+import dev.velowin.core.VeloBenchReport;
 
 public final class VeloCoreTest {
     static void check(boolean ok,String text){if(!ok)throw new AssertionError(text);}
@@ -31,9 +32,18 @@ public final class VeloCoreTest {
         check(snapshot.p95Ms==16f && snapshot.p99Ms==32f,"tail latency");
         check(snapshot.lowOnePercentFps()>30f
             &&snapshot.lowOnePercentFps()<32f,"1pct");
+        VeloBenchReport result=new VeloBenchReport(
+            "Mali \"Example\",GPU\\n",48,100L,30000L,"time_limit",snapshot);
+        check(result.toJson().contains("\\"presented_fps\\":null"),"no invented presented FPS");
+        check(result.toJson().contains("\\"one_percent_low_estimate_fps\\""),"percentile");
+        check(result.toJson().contains("\\"Mali \\\"Example\\\",GPU\\\\n\\""),"JSON escaping");
+        check(result.toCsv().contains("\\"Mali \"\"Example\"\",GPU \""),"CSV escaping");
         meter.addFrameNanos(0);
         meter.addFrameNanos(2_000_000_000L);
         check(meter.snapshot().totalFrames==100,"bad durations discarded");
+        meter.clear();
+        check(meter.snapshot().totalFrames==0 && meter.snapshot().sampleSize==0,
+            "new workload must reset samples");
         new VeloEnginePort.LaunchRequest(1,
             VeloEnginePort.LaunchKind.WINDOWS_DESKTOP,null);
         boolean rejected=false;

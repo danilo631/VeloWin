@@ -10,6 +10,7 @@ on:
       - 'modules/velowin-core/**'
       - tests/VeloCoreTest.java
       - tests/test_v19_modular.py
+      - tests/test_v20_benchmark.py
       - 'overlays/velowin-native/**'
       - tools/strip-lsfg.py
       - tools/patch-v17.py
@@ -33,6 +34,7 @@ on:
       - tools/build-native.sh
       - LICENSE
       - docs/NATIVE_ENGINE_V14.md
+      - docs/BENCHMARK_LIFECYCLE_V20.md
   workflow_dispatch:
 
 permissions:
@@ -59,6 +61,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_v17_runtime.py -v
           python3 -m unittest discover -s tests -p test_v18_recovery.py -v
           python3 -m unittest discover -s tests -p test_v19_modular.py -v
+          python3 -m unittest discover -s tests -p test_v20_benchmark.py -v
           mkdir -p /tmp/velowin-core-test
           javac -d /tmp/velowin-core-test \
             modules/velowin-core/src/main/java/dev/velowin/core/*.java \

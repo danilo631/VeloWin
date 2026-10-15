@@ -22,6 +22,13 @@ public final class GpuBenchMetrics {
         if(used<frameMs.length)used++;
         totalFrames++;
     }
+    /** A new workload or EGL context must never reuse the previous run's samples. */
+    public synchronized void clear() {
+        used = 0;
+        cursor = 0;
+        totalFrames = 0;
+        Arrays.fill(frameMs, 0f);
+    }
     public synchronized Snapshot snapshot(){
         if(used==0)return new Snapshot(0,0,0,0,0,0);
         float[] sorted=Arrays.copyOf(frameMs,used);
