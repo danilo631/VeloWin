@@ -49,7 +49,7 @@ class Velo19Contracts(unittest.TestCase):
         workflow=file(".github/workflows/velowin-native.yml")
         self.assertIn("VeloCoreTest",workflow)
         self.assertIn("test_v19_modular.py",workflow)
-        self.assertIn("VeloWin-VeloBench-v19-debug",workflow)
+        self.assertTrue(any(name in workflow for name in ("VeloWin-VeloBench-v19-debug","VeloWin-Hybrid-v22-debug")) )
         self.assertIn("velowin-core",workflow)
 if __name__=="__main__":
     unittest.main()

@@ -19,6 +19,8 @@ import com.winlator.cmod.runtime.container.ContainerManager;
 import com.winlator.cmod.runtime.content.ContentProfile;
 import com.winlator.cmod.runtime.content.ContentsManager;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
+import dev.velowin.core.VeloUpscalePlan;
+import dev.velowin.core.VeloDynarecPlan;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -141,6 +143,24 @@ public final class VeloSettingsActivity extends Activity {
             }catch(Exception e){message("Restaurar",e.getMessage());}
         });
         label("Vídeo e driver",16,true);
+        VeloUpscalePlan.Mode sr=VeloHybridGraphics.selected(container);
+        label("VeloSR • SGSR1 Vulkan real do compositor: "+sr.name()
+             +" (na próxima inicialização)",12,false);
+        button("VeloSR — resolução interna + nitidez",()->choose(
+            "VeloSR para jogos Wine (reiniciar desktop)",
+            new String[]{"Herdar motor (sem alterações)",
+                "Desativar SGSR1 (nativo)",
+                "Qualidade 75% (SGSR1, nitidez 60%)",
+                "Equilibrado 67% (SGSR1, nitidez 55%)",
+                "Desempenho 50% (SGSR1, nitidez 40%)"},
+            idx->VeloHybridGraphics.select(container,
+                new VeloUpscalePlan.Mode[]{
+                    VeloUpscalePlan.Mode.INHERIT,VeloUpscalePlan.Mode.NATIVE,
+                    VeloUpscalePlan.Mode.QUALITY,VeloUpscalePlan.Mode.BALANCED,
+                    VeloUpscalePlan.Mode.PERFORMANCE}[idx])));
+        label("VeloSR altera a resolução X11 real de novos desktops. "
+             +"Ajustes não afetam jogos em execução; mantém mouse, áudio e Wine.",
+            12,false);
         label("Resolução "+container.getScreenSize()+" • Driver "+container.getGraphicsDriver()
              +" • DirectX "+container.getDXWrapper(),12,false);
         button("Resolução",()->choose("Resolução X11",
@@ -164,6 +184,18 @@ public final class VeloSettingsActivity extends Activity {
         button("Áudio",()->choose("Servidor de áudio",
             new String[]{"PulseAudio","ALSA"},idx->
                 container.setAudioDriver(idx==0?"pulseaudio":"alsa")));
+        VeloDynarecPlan.Mode dyn=VeloBox64Bridge.selected(container);
+        label("Box64 Mobox-style • ajuste adicional: "+dyn.label,12,false);
+        button("Box64 — receita avançada e reversível",()->choose(
+            "DynaRec Box64 (padrões permanecem em Herdar)",
+            new String[]{"Herdar motor","Compatibilidade (flags=2)",
+                "Equilibrado (bigblock=2)","Desempenho (bigblock=3)"},
+            idx->VeloBox64Bridge.select(container,
+                new VeloDynarecPlan.Mode[]{
+                    VeloDynarecPlan.Mode.INHERIT,
+                    VeloDynarecPlan.Mode.COMPATIBILITY,
+                    VeloDynarecPlan.Mode.BALANCED,
+                    VeloDynarecPlan.Mode.PERFORMANCE}[idx])));
         button("Box64 — perfil",()->choose("Box64",
             new String[]{"Estabilidade","Compatibilidade","Desempenho"},idx->
                 container.setBox64Preset(
